@@ -12,12 +12,17 @@
   - Set up testing framework (Hardhat/Foundry) with coverage tools
   - _Requirements: 7.1, 7.5_
 
-- [-] 2. Implement Card NFT Contract
+- [x] 2. Implement Card NFT Contract
+
+
+
 
 
   - _Requirements: 1.2, 1.4, 2.1, 2.4, 2.5, 6.1, 6.2, 7.1, 7.4_
 
-- [ ] 2.1 Create base ERC-721 contract with metadata
+- [x] 2.1 Create base ERC-721 contract with metadata
+
+
 
 
   - Implement ERC-721 standard using OpenZeppelin base contracts
@@ -26,20 +31,32 @@
   - Implement token ID counter for auto-incrementing IDs
   - _Requirements: 2.1, 2.4, 2.5_
 
-- [ ] 2.2 Implement minting functionality with access control
+- [x] 2.2 Implement minting functionality with access control
+
+
   - Create mintCard function that accepts recipient address, playerId, and rarity
   - Add onlyMinter modifier using OpenZeppelin AccessControl
   - Emit CardMinted event with all relevant card details
   - Implement rarity supply tracking in mapping
   - _Requirements: 1.2, 1.4, 7.4_
 
-- [ ] 2.3 Add metadata retrieval and token URI functions
+- [x] 2.3 Add metadata retrieval and token URI functions
+
+
   - Implement getCardMetadata view function returning CardMetadata struct
   - Override tokenURI function to return IPFS metadata URI
   - Create helper function to construct metadata URI from base URI and token ID
   - _Requirements: 2.1, 2.5, 6.2_
 
-- [ ]* 2.4 Write unit tests for Card NFT Contract
+- [ ] 2.4 Write unit tests for Card NFT Contract
+
+
+
+
+
+
+
+
   - Test minting cards with different rarity levels
   - Verify metadata storage and retrieval accuracy
   - Test ownership transfers and ERC-721 compliance

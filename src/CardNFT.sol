@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 /**
  * @title CardNFT
@@ -11,7 +10,6 @@ import "@openzeppelin/contracts/utils/Counters.sol";
  * @dev Implements card minting with metadata and rarity tracking
  */
 contract CardNFT is ERC721, AccessControl {
-    using Counters for Counters.Counter;
 
     // Role for minting cards (granted to Pack Manager)
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -25,7 +23,7 @@ contract CardNFT is ERC721, AccessControl {
     }
 
     // Token ID counter for auto-incrementing IDs
-    Counters.Counter private _tokenIdCounter;
+    uint256 private _nextTokenId;
 
     // Mapping from token ID to card metadata
     mapping(uint256 => CardMetadata) private _cardData;
@@ -52,6 +50,8 @@ contract CardNFT is ERC721, AccessControl {
     constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {
         // Grant admin role to contract deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // Start token IDs at 1
+        _nextTokenId = 1;
     }
 
     /**
@@ -66,9 +66,8 @@ contract CardNFT is ERC721, AccessControl {
         uint256 playerId,
         uint8 rarity
     ) external onlyRole(MINTER_ROLE) returns (uint256) {
-        // Increment token ID counter
-        _tokenIdCounter.increment();
-        uint256 tokenId = _tokenIdCounter.current();
+        // Get current token ID and increment for next mint
+        uint256 tokenId = _nextTokenId++;
 
         // Mint the token
         _safeMint(to, tokenId);
@@ -96,7 +95,7 @@ contract CardNFT is ERC721, AccessControl {
      * @return CardMetadata struct containing card details
      */
     function getCardMetadata(uint256 tokenId) external view returns (CardMetadata memory) {
-        require(_exists(tokenId), "CardNFT: Token does not exist");
+        require(ownerOf(tokenId) != address(0), "CardNFT: Token does not exist");
         return _cardData[tokenId];
     }
 
@@ -106,7 +105,7 @@ contract CardNFT is ERC721, AccessControl {
      * @return URI string pointing to the card's metadata
      */
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        require(_exists(tokenId), "CardNFT: URI query for nonexistent token");
+        require(ownerOf(tokenId) != address(0), "CardNFT: URI query for nonexistent token");
         
         CardMetadata memory metadata = _cardData[tokenId];
         
@@ -140,7 +139,7 @@ contract CardNFT is ERC721, AccessControl {
      * @return Current token ID counter
      */
     function getCurrentTokenId() external view returns (uint256) {
-        return _tokenIdCounter.current();
+        return _nextTokenId - 1;
     }
 
     /**
