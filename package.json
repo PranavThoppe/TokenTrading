@@ -1,0 +1,21 @@
+{
+  "name": "blockchain-trading-cards",
+  "version": "1.0.0",
+  "description": "Blockchain-based fantasy football trading card platform",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "test:coverage": "forge coverage",
+    "deploy:sepolia": "forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify",
+    "clean": "forge clean"
+  },
+  "keywords": [
+    "blockchain",
+    "nft",
+    "trading-cards",
+    "ethereum",
+    "foundry"
+  ],
+  "author": "",
+  "license": "MIT"
+}
