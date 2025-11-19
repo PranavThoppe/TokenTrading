@@ -63,17 +63,25 @@
   - Validate access control for minting permissions
   - _Requirements: 2.1, 2.4, 7.1, 7.4_
 
-- [ ] 3. Implement Pack Manager Contract
+- [x] 3. Implement Pack Manager Contract
+
+
+
+
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.3_
 
-- [ ] 3.1 Create pack configuration system
+- [x] 3.1 Create pack configuration system
+
+
   - Define PackConfig struct with price, cardCount, and rarityWeights array
   - Create mapping for pack types to PackConfig
   - Implement admin function to add/update pack configurations
   - Add player pool mappings organized by rarity tier
   - _Requirements: 1.1, 2.3_
 
-- [ ] 3.2 Implement pack purchase with payment handling
+- [x] 3.2 Implement pack purchase with payment handling
+
+
   - Create purchasePack function accepting pack type and payment
   - Validate payment amount matches pack price
   - Store pending pack data with buyer address and pack type
@@ -81,14 +89,18 @@
   - Emit PackPurchased event with request ID
   - _Requirements: 1.1, 1.4, 1.5_
 
-- [ ] 3.3 Implement randomness fulfillment and card generation
+- [x] 3.3 Implement randomness fulfillment and card generation
+
+
   - Create fulfillRandomness callback function for oracle
   - Implement weighted random selection algorithm using rarity weights
   - Generate array of player IDs based on pack configuration
   - Store generated cards in pending pack data
   - _Requirements: 1.3, 2.3_
 
-- [ ] 3.4 Implement pack opening and card minting
+- [x] 3.4 Implement pack opening and card minting
+
+
   - Create openPack function to mint cards after randomness fulfilled
   - Loop through generated player IDs and call Card NFT mintCard
   - Transfer all minted cards to buyer's wallet
@@ -96,7 +108,12 @@
   - Emit events for pack opening completion
   - _Requirements: 1.2, 1.3, 1.5_
 
-- [ ]* 3.5 Write unit tests for Pack Manager Contract
+- [x] 3.5 Write unit tests for Pack Manager Contract
+
+
+
+
+
   - Test pack purchase with correct and incorrect payment amounts
   - Mock randomness oracle and test fulfillment flow
   - Verify card distribution matches configured rarity weights
