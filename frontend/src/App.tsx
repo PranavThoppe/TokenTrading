@@ -1,0 +1,126 @@
+import { WalletButton } from './components/WalletButton';
+import { WalletDebug } from './components/WalletDebug';
+import { useAccount } from 'wagmi';
+import { useAccountChange } from './hooks/useAccountChange';
+
+function App() {
+  const { isConnected, address } = useAccount();
+
+  // Handle account changes
+  useAccountChange((newAddress) => {
+    console.log('Account changed to:', newAddress);
+  });
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      {/* Subtle gradient overlay */}
+      <div className="fixed inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-fuchsia-500/5 pointer-events-none" />
+      
+      {/* Header */}
+      <header className="border-b border-white/5 backdrop-blur-sm bg-black/20 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xl">
+              ⚡
+            </div>
+            <h1 className="text-xl font-bold text-white">
+              Trading Cards
+            </h1>
+          </div>
+          <WalletButton />
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative">
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          {/* Hero Section */}
+          <div className="text-center mb-20">
+            <h2 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+              Collect, Trade & Auction
+              <br />
+              <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                Fantasy Football Cards
+              </span>
+            </h2>
+            <p className="text-lg text-white max-w-2xl mx-auto">
+              Connect your wallet to start building your ultimate collection on the blockchain
+            </p>
+          </div>
+
+          {/* Connection Card */}
+          {isConnected ? (
+            <div className="max-w-2xl mx-auto mb-20">
+              <div className="card-gradient rounded-2xl p-8">
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-white font-semibold">Connected</span>
+                </div>
+                <div className="bg-black/30 rounded-lg p-4 border border-white/5">
+                  <p className="text-xs text-white uppercase tracking-wider mb-2">Wallet Address</p>
+                  <code className="text-white text-sm font-mono break-all">{address}</code>
+                </div>
+                <p className="text-center text-white text-sm mt-6">
+                  Platform features coming soon...
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-md mx-auto mb-20">
+              <div className="card-gradient rounded-2xl p-10 text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-3xl mx-auto mb-6">
+                  🔐
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  Get Started
+                </h3>
+                <p className="text-white mb-8">
+                  Connect your wallet to access the platform
+                </p>
+                <WalletButton />
+              </div>
+            </div>
+          )}
+
+          {/* Feature Cards */}
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="card-gradient rounded-xl p-6 transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-2xl mb-4">
+                🎴
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Collect Cards</h3>
+              <p className="text-white text-sm">
+                Build your ultimate fantasy football collection
+              </p>
+            </div>
+            
+            <div className="card-gradient rounded-xl p-6 transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-fuchsia-500 to-pink-500 flex items-center justify-center text-2xl mb-4">
+                💎
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Trade NFTs</h3>
+              <p className="text-white text-sm">
+                Exchange cards with other collectors
+              </p>
+            </div>
+            
+            <div className="card-gradient rounded-xl p-6 transition-all duration-300 hover:scale-105">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-violet-500 flex items-center justify-center text-2xl mb-4">
+                🏆
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Auction House</h3>
+              <p className="text-white text-sm">
+                Bid on rare and legendary cards
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Debug Panel */}
+      <WalletDebug />
+    </div>
+  );
+}
+
+export default App;

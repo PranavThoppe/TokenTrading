@@ -121,6 +121,18 @@
   - Validate reentrancy protection on payable functions
   - _Requirements: 1.1, 1.2, 1.3, 2.3_
 
+- [x] 3.6 Build frontend web application
+
+
+
+
+
+  - Create React-based web interface for interacting with smart contracts
+  - Implement wallet connection, pack purchasing, and collection viewing
+  - Add trading and auction interfaces
+  - See detailed implementation plan in `.kiro/specs/frontend-web-app/`
+  - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 6.4, 6.5_
+
 - [ ] 4. Implement Marketplace Contract for peer-to-peer trading
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 7.1, 7.2, 7.3, 7.4_
 

@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: rgb(3, 7, 18);
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(34, 211, 238, 0.1) 0px, transparent 50%);
+    color: white;
+  }
+  
+  h1, h2, h3, h4, h5, h6, p, span, div, button, a {
+    color: white;
+  }
+}
+
+@layer utilities {
+  .neon-glow-blue {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5),
+                0 0 20px rgba(59, 130, 246, 0.3),
+                0 0 30px rgba(88, 115, 160, 0.2);
+  }
+  
+  .neon-glow-purple {
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5),
+                0 0 20px rgba(168, 85, 247, 0.3),
+                0 0 30px rgba(168, 85, 247, 0.2);
+  }
+  
+  .neon-glow-cyan {
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.5),
+                0 0 20px rgba(34, 211, 238, 0.3),
+                0 0 30px rgba(34, 211, 238, 0.2);
+  }
+  
+  .neon-glow-pink {
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.5),
+                0 0 20px rgba(236, 72, 153, 0.3),
+                0 0 30px rgba(236, 72, 153, 0.2);
+  }
+
+  .neon-border-blue {
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3),
+                inset 0 0 10px rgba(59, 130, 246, 0.1);
+  }
+
+  .neon-border-cyan {
+    border: 1px solid rgba(34, 211, 238, 0.5);
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.3),
+                inset 0 0 10px rgba(34, 211, 238, 0.1);
+  }
+
+  .neon-text-blue {
+    color: rgb(147, 197, 253);
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.8),
+                 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+
+  .neon-text-cyan {
+    color: rgb(165, 243, 252);
+    text-shadow: 0 0 10px rgba(34, 211, 238, 0.8),
+                 0 0 20px rgba(34, 211, 238, 0.5);
+  }
+
+  .neon-text-purple {
+    color: rgb(216, 180, 254);
+    text-shadow: 0 0 10px rgba(168, 85, 247, 0.8),
+                 0 0 20px rgba(168, 85, 247, 0.5);
+  }
+  
+  .text-white-glow {
+    color: rgb(255, 255, 255);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  }
+
+  .glass-panel {
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
