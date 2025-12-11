@@ -19,26 +19,41 @@ export function TransactionNotification({
   isConfirming = false,
   onClose,
 }: TransactionNotificationProps) {
-  const [isVisible, setIsVisible] = useState(true);
+  const [dismissed, setDismissed] = useState(false);
+  const [lastHash, setLastHash] = useState<string | undefined>();
 
+  // Reset dismissed state when a new transaction starts (new hash)
   useEffect(() => {
-    if (status === 'success') {
+    if (hash && hash !== lastHash) {
+      setDismissed(false);
+      setLastHash(hash);
+    }
+  }, [hash, lastHash]);
+
+  // Auto-dismiss after success
+  useEffect(() => {
+    if (status === 'success' && !dismissed) {
       const timer = setTimeout(() => {
-        setIsVisible(false);
+        setDismissed(true);
         onClose?.();
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [status, onClose]);
+  }, [status, dismissed, onClose]);
 
-  if (!isVisible || status === 'idle') {
+  // Don't show if idle or dismissed
+  const shouldShow = status !== 'idle' && !dismissed;
+  
+  console.log('TransactionNotification:', { status, hash, dismissed, shouldShow });
+
+  if (!shouldShow) {
     return null;
   }
 
   const blockExplorerUrl = `https://sepolia.etherscan.io/tx/${hash}`;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-sm">
+    <div className="fixed bottom-6 right-6 z-[9999] max-w-sm" style={{ backgroundColor: 'red', padding: '20px' }}>
       <div
         className={`rounded-lg p-4 shadow-lg border ${
           status === 'pending'
