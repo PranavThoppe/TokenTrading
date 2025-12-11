@@ -42,15 +42,8 @@ export function PackStoreContainer() {
     setSelectedPack(null);
   };
 
-  console.log('PackStoreContainer render - status:', status, 'hash:', hash);
-
   return (
     <>
-      {/* Always visible debug */}
-      <div className="fixed top-4 right-4 bg-yellow-500 text-black p-2 rounded z-[99999] text-xs">
-        Status: {status} | Hash: {hash ? hash.slice(0,10) : 'none'}
-      </div>
-      
       <PackStore
         packs={packs}
         isLoading={isLoading}
