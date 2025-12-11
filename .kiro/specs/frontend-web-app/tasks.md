@@ -65,10 +65,16 @@
   - Test disconnect functionality
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 3. Build pack store and purchase interface
+- [x] 3. Build pack store and purchase interface
+
+
+
+
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 3.1 Create pack store components
+- [x] 3.1 Create pack store components
+
+
   - Build PackStore page component with layout
   - Create PackCard component displaying pack details
   - Add rarity distribution visualization
@@ -76,7 +82,9 @@
   - Style with TailwindCSS and add hover effects
   - _Requirements: 2.1, 9.1, 9.2_
 
-- [ ] 3.2 Implement pack purchase functionality
+- [x] 3.2 Implement pack purchase functionality
+
+
   - Create usePurchasePack hook for contract interaction
   - Add purchase confirmation modal
   - Implement transaction state management
@@ -84,7 +92,9 @@
   - Show success/error notifications
   - _Requirements: 2.2, 2.3, 2.4, 2.5, 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 3.3 Add pack data fetching
+- [x] 3.3 Add pack data fetching
+
+
   - Create hook to fetch pack configurations from contract
   - Implement caching with TanStack Query
   - Display pack prices in ETH with conversion
