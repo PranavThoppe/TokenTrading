@@ -68,10 +68,7 @@ export function PackCard({ pack, onPurchase, isLoading = false }: PackCardProps)
             <p className="text-2xl font-bold text-white">{priceInEth} ETH</p>
           </div>
           <button
-            onClick={() => {
-              console.log('Purchase clicked for pack:', pack.id);
-              onPurchase(pack.id);
-            }}
+            onClick={() => onPurchase(pack.id)}
             disabled={isLoading || !pack.active}
             className="px-6 py-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >

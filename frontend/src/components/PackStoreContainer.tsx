@@ -22,14 +22,9 @@ export function PackStoreContainer({ onNavigateToOpenPacks }: PackStoreContainer
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handlePurchaseClick = async (packType: number) => {
-    console.log('handlePurchaseClick called with packType:', packType);
-    console.log('Available packs:', packs);
     const pack = packs.find((p) => p.id === packType);
-    console.log('Found pack:', pack);
     if (pack) {
       setSelectedPack(pack);
-      // Skip modal, trigger MetaMask directly
-      console.log('Triggering purchase for pack:', pack.id, 'price:', pack.price.toString());
       await purchasePack(pack.id, pack.price);
     }
   };

@@ -43,8 +43,6 @@ export function TransactionNotification({
 
   // Don't show if idle or dismissed
   const shouldShow = status !== 'idle' && !dismissed;
-  
-  console.log('TransactionNotification:', { status, hash, dismissed, shouldShow });
 
   if (!shouldShow) {
     return null;

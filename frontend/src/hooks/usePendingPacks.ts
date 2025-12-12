@@ -85,8 +85,6 @@ export function usePendingPacks(): UsePendingPacksResult {
         args: [address],
       })) as bigint[];
 
-      console.log('User pending pack IDs from contract:', requestIds.map((id) => id.toString()));
-
       if (requestIds.length === 0) {
         setPendingPacks([]);
         return;
@@ -97,8 +95,6 @@ export function usePendingPacks(): UsePendingPacksResult {
 
       // Filter out any null results
       const validPacks = packs.filter((p): p is PendingPackData => p !== null);
-
-      console.log('Found pending packs:', validPacks.length);
       setPendingPacks(validPacks);
     } catch (err) {
       console.error('Error fetching pending packs:', err);

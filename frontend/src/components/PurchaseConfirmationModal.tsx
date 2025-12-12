@@ -20,14 +20,11 @@ export function PurchaseConfirmationModal({
   onConfirm,
   onCancel,
 }: PurchaseConfirmationModalProps) {
-  console.log('Modal render - isOpen:', isOpen, 'pack:', pack);
-  
   if (!isOpen) {
     return null;
   }
 
   const priceInEth = formatEther(pack.price);
-  console.log('Modal is rendering with price:', priceInEth);
 
   const modalContent = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">

@@ -102,10 +102,39 @@ export function useUserCards(): UseUserCardsResult {
     }
   }, [publicClient, address]);
 
-  // Fetch cards by specific token IDs
-  const fetchCardsByIds = useCallback(async (ids: bigint[]): Promise<Card[]> => {
+  // Fetch cards by specific token IDs with retry logic
+  const fetchCardsByIds = useCallback(async (ids: bigint[], retries = 3, delayMs = 2000): Promise<Card[]> => {
     if (!publicClient || !address || ids.length === 0) return [];
 
+    // Helper to delay
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Try fetching with retries
+    for (let attempt = 0; attempt < retries; attempt++) {
+      if (attempt > 0) {
+        console.log(`[useUserCards] Retry attempt ${attempt + 1}/${retries} after ${delayMs}ms delay...`);
+        await delay(delayMs);
+      }
+
+      const cardPromises = ids.map(id => fetchCardMetadata(id));
+      const results = await Promise.all(cardPromises);
+      const validCards = results.filter((card): card is Card => card !== null);
+
+      // If we got all cards, return them
+      if (validCards.length === ids.length) {
+        console.log(`[useUserCards] Successfully fetched all ${validCards.length} cards`);
+        return validCards;
+      }
+
+      // If we got some cards, log which ones are missing
+      if (validCards.length > 0) {
+        const foundIds = new Set(validCards.map(c => c.tokenId.toString()));
+        const missingIds = ids.filter(id => !foundIds.has(id.toString()));
+        console.log(`[useUserCards] Got ${validCards.length}/${ids.length} cards. Missing: ${missingIds.map(id => id.toString()).join(', ')}`);
+      }
+    }
+
+    // Final attempt - return whatever we got
     const cardPromises = ids.map(id => fetchCardMetadata(id));
     const results = await Promise.all(cardPromises);
     return results.filter((card): card is Card => card !== null);
@@ -126,7 +155,7 @@ export function useUserCards(): UseUserCardsResult {
       const currentBlock = await publicClient.getBlockNumber();
       const fromBlock = currentBlock > 9000n ? currentBlock - 9000n : 0n;
 
-      console.log('Fetching cards from block', fromBlock.toString(), 'to', currentBlock.toString());
+
 
       // Get Transfer events where user received tokens
       const receivedLogs = await publicClient.getLogs({

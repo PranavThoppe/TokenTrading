@@ -1,44 +1,53 @@
-interface NavItem {
-  id: string;
-  label: string;
-  icon: string;
-}
-
 interface NavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-/**
- * Navigation bar component with menu items
- */
 export function Navigation({ activeTab, onTabChange }: NavigationProps) {
-  const navItems: NavItem[] = [
-    { id: 'store', label: 'Pack Store', icon: '🎁' },
-    { id: 'open', label: 'Open Packs', icon: '📦' },
-    { id: 'collection', label: 'My Collection', icon: '🎴' },
-    { id: 'marketplace', label: 'Marketplace', icon: '🏪' },
+  const navItems = [
+    { id: 'store', label: 'Pack Store' },
+    { id: 'open', label: 'Open Packs' },
+    { id: 'collection', label: 'My Collection' },
+    { id: 'marketplace', label: 'Marketplace' },
   ];
 
   return (
-    <nav className="border-b border-white/10 bg-slate-900/50 backdrop-blur-sm sticky top-16 z-40">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="flex items-center gap-8">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={`py-4 px-2 font-medium transition-all duration-300 border-b-2 ${
-                activeTab === item.id
-                  ? 'border-violet-500 text-violet-400'
-                  : 'border-transparent text-white/60 hover:text-white'
-              }`}
-            >
-              <span className="mr-2">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </div>
+    <nav
+      style={{
+        background: '#1a1a2e',
+        borderBottom: '1px solid #333',
+        padding: '0 24px',
+        position: 'relative',
+        zIndex: 100,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '900px',
+          margin: '0 auto',
+          display: 'flex',
+          gap: '8px',
+        }}
+      >
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onTabChange(item.id)}
+            style={{
+              padding: '14px 20px',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === item.id ? '2px solid #7c3aed' : '2px solid transparent',
+              color: activeTab === item.id ? '#fff' : '#888',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'color 0.2s',
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
     </nav>
   );

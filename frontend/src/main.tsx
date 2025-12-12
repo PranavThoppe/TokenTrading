@@ -8,6 +8,12 @@ import { Web3Provider } from './providers/Web3Provider';
 // Polyfill Buffer for wallet connections
 window.Buffer = Buffer;
 
+// Fix BigInt serialization for React DevTools and console.log
+// @ts-expect-error BigInt prototype extension
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Web3Provider>

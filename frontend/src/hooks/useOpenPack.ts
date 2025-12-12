@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { decodeEventLog } from 'viem';
 import { PACK_MANAGER_ABI } from '@/lib/abis';
 import { PACK_MANAGER_ADDRESS } from '@/lib/contracts';
 import type { TransactionStatus } from '@/types/contracts';
@@ -34,10 +35,6 @@ export function useOpenPack(): OpenPackResult {
 
   const openPack = async (requestId: bigint) => {
     try {
-      console.log('Starting pack opening transaction...');
-      console.log('Request ID:', requestId.toString());
-      console.log('Contract address:', PACK_MANAGER_ADDRESS);
-      
       setStatus('pending');
       setError(null);
       setMintedTokenIds([]);
@@ -49,10 +46,8 @@ export function useOpenPack(): OpenPackResult {
         args: [requestId],
       });
 
-      console.log('Transaction sent! Hash:', txHash);
       setHash(txHash);
     } catch (err: unknown) {
-      console.error('Open pack error:', err);
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);
       setStatus('error');
@@ -66,20 +61,57 @@ export function useOpenPack(): OpenPackResult {
     setMintedTokenIds([]);
   };
 
-  // Update status based on confirmation state
+  // Parse PackOpened event when transaction is confirmed
   useEffect(() => {
-    if (isConfirmed && status === 'pending') {
-      console.log('Pack opening confirmed!');
-      setStatus('success');
+    console.log('[useOpenPack] Effect triggered:', { isConfirmed, hasReceipt: !!receipt, status });
+    
+    if (isConfirmed && receipt && status === 'pending') {
+      console.log('[useOpenPack] Transaction confirmed, parsing logs...', { 
+        logsCount: receipt.logs.length,
+        contractAddress: PACK_MANAGER_ADDRESS 
+      });
       
-      // Parse PackOpened event from receipt to get token IDs
-      if (receipt?.logs) {
-        // The PackOpened event has tokenIds as the third indexed parameter
-        // We'll need to decode the logs to get the actual token IDs
-        console.log('Transaction receipt logs:', receipt.logs);
+      let foundTokenIds: bigint[] = [];
+      
+      // Find the PackOpened event in the logs
+      for (const log of receipt.logs) {
+        console.log('[useOpenPack] Checking log:', { 
+          logAddress: log.address, 
+          isOurContract: log.address.toLowerCase() === PACK_MANAGER_ADDRESS.toLowerCase() 
+        });
+        
+        try {
+          if (log.address.toLowerCase() !== PACK_MANAGER_ADDRESS.toLowerCase()) {
+            continue;
+          }
+
+          const decoded = decodeEventLog({
+            abi: PACK_MANAGER_ABI,
+            data: log.data,
+            topics: log.topics,
+          });
+
+          console.log('[useOpenPack] Decoded event:', decoded.eventName);
+
+          if (decoded.eventName === 'PackOpened') {
+            const args = decoded.args as { tokenIds: bigint[] };
+            foundTokenIds = args.tokenIds;
+            console.log('[useOpenPack] Found PackOpened event! Token IDs:', args.tokenIds.map(id => id.toString()));
+            setMintedTokenIds(args.tokenIds);
+            break;
+          }
+        } catch (e) {
+          console.log('[useOpenPack] Could not decode log:', e);
+        }
       }
+      
+      if (foundTokenIds.length === 0) {
+        console.warn('[useOpenPack] No PackOpened event found in logs!');
+      }
+
+      setStatus('success');
     }
-  }, [isConfirmed, status, receipt]);
+  }, [isConfirmed, receipt, status]);
 
   const isPending = status === 'pending';
 

@@ -1,141 +1,182 @@
 import { useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import { PackOpening } from './PackOpening';
-import { PendingPacksList } from './PendingPacksList';
 import { usePendingPacks, type PendingPackData } from '@/hooks/usePendingPacks';
-import { useUserCards } from '@/hooks/useUserCards';
 import { useCollectionStore } from '@/store/collectionStore';
-import type { Card } from '@/types/contracts';
 
 interface PackOpeningContainerProps {
   onViewCollection?: () => void;
+  onNavigateToStore?: () => void;
 }
 
-/**
- * Container component that manages pack opening flow and collection integration
- */
-export function PackOpeningContainer({ onViewCollection }: PackOpeningContainerProps) {
-  const { pendingPacks, isLoading: packsLoading, refetch: refetchPacks } = usePendingPacks();
-  const { fetchCardsByIds } = useUserCards();
+const packNames: Record<number, string> = {
+  0: 'Starter Pack',
+  1: 'Standard Pack',
+  2: 'Premium Pack',
+};
+
+export function PackOpeningContainer({ onViewCollection, onNavigateToStore }: PackOpeningContainerProps) {
+  const { pendingPacks, isLoading, refetch } = usePendingPacks();
   const { markCardsAsNew } = useCollectionStore();
-  
+
   const [selectedPack, setSelectedPack] = useState<PendingPackData | null>(null);
-  const [revealedCards, setRevealedCards] = useState<Card[]>([]);
 
-  // Handle pack selection
-  const handleSelectPack = (pack: PendingPackData) => {
-    setSelectedPack(pack);
-    setRevealedCards([]);
-  };
+  const handlePackOpened = useCallback(
+    (tokenIds: bigint[]) => {
+      if (tokenIds.length > 0) {
+        markCardsAsNew(tokenIds);
+      }
+      refetch();
+    },
+    [refetch, markCardsAsNew],
+  );
 
-  // Handle pack opened - fetch newly minted cards
-  const handlePackOpened = useCallback(async () => {
-    // After pack is opened, we need to fetch the newly minted cards
-    // The PackOpened event contains the token IDs
-    // For now, we'll refetch all cards and show the newest ones
-    refetchPacks();
-    
-    // In a real implementation, we'd parse the PackOpened event logs
-    // to get the exact token IDs that were minted
-  }, [refetchPacks]);
-
-  // Handle viewing collection with new cards highlighted
   const handleViewCollection = () => {
-    if (revealedCards.length > 0) {
-      const newIds = revealedCards.map(card => card.tokenId);
-      markCardsAsNew(newIds);
-    }
     onViewCollection?.();
   };
 
-  // Get the first fulfilled pack if none selected
-  const activePack = selectedPack || pendingPacks.find(p => p.fulfilled) || pendingPacks[0] || null;
+  const activePack =
+    selectedPack || pendingPacks.find((p) => p.fulfilled) || pendingPacks[0] || null;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <h1 className="text-4xl font-bold text-white mb-3">Open Packs</h1>
-        <p className="text-lg text-white/60">
-          Open your purchased packs to reveal new cards
-        </p>
-      </motion.div>
+    <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
+      <h1 style={{ fontSize: '28px', marginBottom: '8px', color: '#fff' }}>Open Packs</h1>
+      <p style={{ color: '#aaa', marginBottom: '24px' }}>
+        Open your purchased packs to reveal new cards
+      </p>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Pending Packs Sidebar */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="lg:col-span-1"
+      <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+        {/* Packs List */}
+        <div
+          style={{
+            flex: '1',
+            minWidth: '280px',
+            background: '#1a1a2e',
+            borderRadius: '12px',
+            padding: '20px',
+            border: '1px solid #333',
+          }}
         >
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Your Packs</h2>
-            <PendingPacksList
-              pendingPacks={pendingPacks}
-              isLoading={packsLoading}
-              onSelectPack={handleSelectPack}
-              selectedPackId={activePack?.requestId}
-            />
-            
-            {/* Refresh button */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+            }}
+          >
+            <h2 style={{ fontSize: '18px', color: '#fff', margin: 0 }}>Your Packs</h2>
             <button
-              onClick={() => refetchPacks()}
-              className="mt-4 w-full py-2 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors text-sm"
+              onClick={() => refetch()}
+              style={{
+                padding: '6px 12px',
+                background: '#333',
+                border: 'none',
+                borderRadius: '6px',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
             >
-              Refresh Packs
+              Refresh
             </button>
           </div>
-        </motion.div>
+
+          {isLoading ? (
+            <p style={{ color: '#888' }}>Loading...</p>
+          ) : pendingPacks.length === 0 ? (
+            <p style={{ color: '#888' }}>No packs. Purchase one from the store!</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {pendingPacks.map((pack) => {
+                const isSelected = activePack?.requestId === pack.requestId;
+                return (
+                  <button
+                    key={pack.requestId.toString()}
+                    onClick={() => setSelectedPack(pack)}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 16px',
+                      background: isSelected ? '#2d2d4a' : '#252538',
+                      border: isSelected ? '2px solid #7c3aed' : '2px solid transparent',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div>
+                      <div style={{ color: '#fff', fontWeight: 600, fontSize: '14px' }}>
+                        {packNames[pack.packType] || 'Pack'}
+                      </div>
+                      <div style={{ color: '#888', fontSize: '12px' }}>
+                        ID: {pack.requestId.toString().slice(0, 10)}...
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        background: pack.fulfilled ? '#166534' : '#854d0e',
+                        color: pack.fulfilled ? '#4ade80' : '#fbbf24',
+                      }}
+                    >
+                      {pack.fulfilled ? 'Ready' : 'Pending'}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Stats */}
+          <div
+            style={{
+              marginTop: '20px',
+              paddingTop: '16px',
+              borderTop: '1px solid #333',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px',
+            }}
+          >
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff' }}>
+                {pendingPacks.length}
+              </div>
+              <div style={{ fontSize: '12px', color: '#888' }}>Total</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: '#4ade80' }}>
+                {pendingPacks.filter((p) => p.fulfilled).length}
+              </div>
+              <div style={{ fontSize: '12px', color: '#888' }}>Ready</div>
+            </div>
+          </div>
+        </div>
 
         {/* Pack Opening Area */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-2"
+        <div
+          style={{
+            flex: '2',
+            minWidth: '320px',
+            background: '#1a1a2e',
+            borderRadius: '12px',
+            padding: '24px',
+            border: '1px solid #333',
+            minHeight: '400px',
+          }}
         >
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-8 min-h-[500px]">
-            <PackOpening
-              pendingPack={activePack}
-              onPackOpened={handlePackOpened}
-              onViewCollection={handleViewCollection}
-              revealedCards={revealedCards}
-            />
-          </div>
-        </motion.div>
+          <PackOpening
+            pendingPack={activePack}
+            onPackOpened={handlePackOpened}
+            onViewCollection={handleViewCollection}
+            onNavigateToStore={onNavigateToStore}
+          />
+        </div>
       </div>
-
-      {/* Quick Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
-      >
-        <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-          <p className="text-2xl font-bold text-white">{pendingPacks.length}</p>
-          <p className="text-sm text-white/60">Total Packs</p>
-        </div>
-        <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-          <p className="text-2xl font-bold text-green-400">
-            {pendingPacks.filter(p => p.fulfilled).length}
-          </p>
-          <p className="text-sm text-white/60">Ready to Open</p>
-        </div>
-        <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-          <p className="text-2xl font-bold text-yellow-400">
-            {pendingPacks.filter(p => !p.fulfilled).length}
-          </p>
-          <p className="text-sm text-white/60">Pending</p>
-        </div>
-        <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-          <p className="text-2xl font-bold text-violet-400">{revealedCards.length}</p>
-          <p className="text-sm text-white/60">Cards Revealed</p>
-        </div>
-      </motion.div>
     </div>
   );
 }

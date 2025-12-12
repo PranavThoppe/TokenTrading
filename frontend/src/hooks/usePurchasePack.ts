@@ -40,11 +40,6 @@ export function usePurchasePack(): PurchasePackResult {
 
   const purchasePack = async (packType: number, price: bigint) => {
     try {
-      console.log('Starting purchase transaction...');
-      console.log('Pack type:', packType);
-      console.log('Price:', price.toString());
-      console.log('Contract address:', PACK_MANAGER_ADDRESS);
-
       setStatus('pending');
       setError(null);
       setRequestId(undefined);
@@ -57,7 +52,6 @@ export function usePurchasePack(): PurchasePackResult {
         value: price,
       });
 
-      console.log('Transaction sent! Hash:', txHash);
       setHash(txHash);
     } catch (err: unknown) {
       console.error('Purchase error:', err);
@@ -77,9 +71,6 @@ export function usePurchasePack(): PurchasePackResult {
   // Extract requestId from transaction receipt when confirmed
   useEffect(() => {
     if (isConfirmed && receipt && status === 'pending') {
-      console.log('Transaction confirmed! Extracting requestId from logs...');
-      console.log('Receipt logs:', receipt.logs);
-
       // Find the PackPurchased event in the logs
       for (const log of receipt.logs) {
         try {
@@ -94,17 +85,13 @@ export function usePurchasePack(): PurchasePackResult {
             topics: log.topics,
           });
 
-          console.log('Decoded event:', decoded);
-
           if (decoded.eventName === 'PackPurchased') {
             const args = decoded.args as { requestId: bigint };
-            console.log('Found PackPurchased event, requestId:', args.requestId.toString());
             setRequestId(args.requestId);
             break;
           }
-        } catch (e) {
+        } catch {
           // Not a PackPurchased event, continue
-          console.log('Could not decode log:', e);
         }
       }
 
