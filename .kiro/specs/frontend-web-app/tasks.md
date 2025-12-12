@@ -108,17 +108,25 @@
   - Test error handling
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 4. Implement pack opening with animations
+- [x] 4. Implement pack opening with animations
+
+
+
+
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 4.1 Create pack opening UI
+- [x] 4.1 Create pack opening UI
+
+
   - Build PackOpening page component
   - Create AnimatedPack component with 3D transforms
   - Add "Open Pack" button with loading state
   - Implement useOpenPack hook for contract interaction
   - _Requirements: 3.1, 3.2_
 
-- [ ] 4.2 Build card reveal animation
+
+- [x] 4.2 Build card reveal animation
+
   - Create CardReveal component with flip animation
   - Implement sequential reveal using Framer Motion
   - Add rarity-based visual effects (sparkles, glow)
@@ -126,14 +134,18 @@
   - Add sound effects (optional, with mute toggle)
   - _Requirements: 3.4_
 
-- [ ] 4.3 Handle pending packs
+- [x] 4.3 Handle pending packs
+
+
   - Create hook to fetch pending packs from contract
   - Display pending packs list
   - Listen for randomness fulfillment events
   - Auto-refresh when pack is ready to open
   - _Requirements: 3.1, 3.3, 10.1, 10.3_
 
-- [ ] 4.4 Integrate with collection
+- [x] 4.4 Integrate with collection
+
+
   - Fetch newly minted cards after opening
   - Add cards to collection state
   - Show "View Collection" button after reveal

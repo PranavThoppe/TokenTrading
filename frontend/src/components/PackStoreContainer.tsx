@@ -1,18 +1,22 @@
 import { useState } from 'react';
 import { PackStore } from './PackStore';
 import { PurchaseConfirmationModal } from './PurchaseConfirmationModal';
-import { TransactionNotification } from './TransactionNotification';
 import { usePackTypes } from '@/hooks/usePackTypes';
 import { usePurchasePack } from '@/hooks/usePurchasePack';
 import type { PackType } from '@/types/contracts';
 
+interface PackStoreContainerProps {
+  onNavigateToOpenPacks?: () => void;
+}
+
 /**
  * Container component that manages pack store state and interactions
  */
-export function PackStoreContainer() {
+export function PackStoreContainer({ onNavigateToOpenPacks }: PackStoreContainerProps) {
   const { packs, isLoading, error: packError } = usePackTypes();
-  const { purchasePack, status, error, hash, isPending, isConfirming, isConfirmed } =
-    usePurchasePack();
+  const { purchasePack, status, hash, isPending } = usePurchasePack();
+
+  // No need to track requestId locally - contract now tracks user's pending packs
 
   const [selectedPack, setSelectedPack] = useState<PackType | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -98,16 +102,38 @@ export function PackStoreContainer() {
               <span style={{ fontSize: '24px' }}>✅</span>
               <div>
                 <div>Pack Purchased Successfully!</div>
-                {hash && (
-                  <a 
-                    href={`https://sepolia.etherscan.io/tx/${hash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}
-                  >
-                    View on Etherscan →
-                  </a>
-                )}
+                <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                  {hash && (
+                    <a
+                      href={`https://sepolia.etherscan.io/tx/${hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: '14px',
+                        color: 'rgba(255,255,255,0.8)',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      View on Etherscan →
+                    </a>
+                  )}
+                  {onNavigateToOpenPacks && (
+                    <button
+                      onClick={onNavigateToOpenPacks}
+                      style={{
+                        fontSize: '14px',
+                        color: 'white',
+                        background: 'rgba(255,255,255,0.2)',
+                        border: 'none',
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Open Pack →
+                    </button>
+                  )}
+                </div>
               </div>
             </>
           )}

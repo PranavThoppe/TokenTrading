@@ -1,23 +1,23 @@
-import { useState } from 'react';
-import { useAccount } from 'wagmi';
-
 interface NavItem {
+  id: string;
   label: string;
-  href: string;
   icon: string;
+}
+
+interface NavigationProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
 }
 
 /**
  * Navigation bar component with menu items
  */
-export function Navigation() {
-  const { isConnected } = useAccount();
-  const [activeTab, setActiveTab] = useState('store');
-
+export function Navigation({ activeTab, onTabChange }: NavigationProps) {
   const navItems: NavItem[] = [
-    { label: 'Pack Store', href: '#store', icon: '🎁' },
-    { label: 'My Collection', href: '#collection', icon: '🎴' },
-    { label: 'Marketplace', href: '#marketplace', icon: '🏪' },
+    { id: 'store', label: 'Pack Store', icon: '🎁' },
+    { id: 'open', label: 'Open Packs', icon: '📦' },
+    { id: 'collection', label: 'My Collection', icon: '🎴' },
+    { id: 'marketplace', label: 'Marketplace', icon: '🏪' },
   ];
 
   return (
@@ -26,10 +26,10 @@ export function Navigation() {
         <div className="flex items-center gap-8">
           {navItems.map((item) => (
             <button
-              key={item.href}
-              onClick={() => setActiveTab(item.href.slice(1))}
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
               className={`py-4 px-2 font-medium transition-all duration-300 border-b-2 ${
-                activeTab === item.href.slice(1)
+                activeTab === item.id
                   ? 'border-violet-500 text-violet-400'
                   : 'border-transparent text-white/60 hover:text-white'
               }`}

@@ -63,6 +63,9 @@ contract PackManager is AccessControl, ReentrancyGuard, VRFConsumerBaseV2Plus {
     // Mapping from VRF request ID to pending pack data
     mapping(uint256 => PendingPack) private _pendingPacks;
 
+    // Mapping from user address to their pending pack request IDs
+    mapping(address => uint256[]) private _userPendingPacks;
+
     // Custom errors
     error InvalidPackType();
     error InsufficientPayment();
@@ -265,6 +268,9 @@ contract PackManager is AccessControl, ReentrancyGuard, VRFConsumerBaseV2Plus {
             fulfilled: false
         });
 
+        // Track this pack for the user
+        _userPendingPacks[msg.sender].push(requestId);
+
         // Refund excess payment
         if (msg.value > config.price) {
             (bool success, ) = msg.sender.call{value: msg.value - config.price}("");
@@ -374,6 +380,9 @@ contract PackManager is AccessControl, ReentrancyGuard, VRFConsumerBaseV2Plus {
             );
         }
 
+        // Remove from user's pending packs array
+        _removeFromUserPendingPacks(pack.buyer, requestId);
+
         // Clean up pending pack data
         delete _pendingPacks[requestId];
 
@@ -383,12 +392,40 @@ contract PackManager is AccessControl, ReentrancyGuard, VRFConsumerBaseV2Plus {
     }
 
     /**
+     * @notice Remove a request ID from user's pending packs array
+     * @param user User address
+     * @param requestId Request ID to remove
+     */
+    function _removeFromUserPendingPacks(address user, uint256 requestId) private {
+        uint256[] storage userPacks = _userPendingPacks[user];
+        uint256 length = userPacks.length;
+        
+        for (uint256 i = 0; i < length; i++) {
+            if (userPacks[i] == requestId) {
+                // Move last element to this position and pop
+                userPacks[i] = userPacks[length - 1];
+                userPacks.pop();
+                break;
+            }
+        }
+    }
+
+    /**
      * @notice Get pending pack information
      * @param requestId VRF request ID
      * @return PendingPack struct
      */
     function getPendingPack(uint256 requestId) external view returns (PendingPack memory) {
         return _pendingPacks[requestId];
+    }
+
+    /**
+     * @notice Get all pending pack request IDs for a user
+     * @param user User address
+     * @return Array of request IDs
+     */
+    function getUserPendingPacks(address user) external view returns (uint256[] memory) {
+        return _userPendingPacks[user];
     }
 
     /**

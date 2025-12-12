@@ -170,4 +170,35 @@
     border: 2px solid;
     border-image: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #f472b6 100%) 1;
   }
+
+  /* 3D Transform utilities for card animations */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  /* Spin animation for loading indicators */
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
 }

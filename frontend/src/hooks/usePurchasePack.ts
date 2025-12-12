@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi';
+import { decodeEventLog } from 'viem';
 import { PACK_MANAGER_ABI } from '@/lib/abis';
 import { PACK_MANAGER_ADDRESS } from '@/lib/contracts';
 import type { TransactionStatus } from '@/types/contracts';
@@ -11,21 +12,29 @@ interface PurchasePackResult {
   isPending: boolean;
   isConfirming: boolean;
   isConfirmed: boolean;
+  requestId: bigint | undefined;
   purchasePack: (packType: number, price: bigint) => Promise<void>;
+  reset: () => void;
 }
 
 /**
  * Hook to handle pack purchase transactions
- * Manages transaction state and confirmation
+ * Manages transaction state and confirmation, extracts requestId from events
  */
 export function usePurchasePack(): PurchasePackResult {
   const [status, setStatus] = useState<TransactionStatus>('idle');
   const [error, setError] = useState<Error | null>(null);
   const [hash, setHash] = useState<string | undefined>();
+  const [requestId, setRequestId] = useState<bigint | undefined>();
 
+  const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    data: receipt,
+  } = useWaitForTransactionReceipt({
     hash: hash as `0x${string}` | undefined,
   });
 
@@ -35,9 +44,10 @@ export function usePurchasePack(): PurchasePackResult {
       console.log('Pack type:', packType);
       console.log('Price:', price.toString());
       console.log('Contract address:', PACK_MANAGER_ADDRESS);
-      
+
       setStatus('pending');
       setError(null);
+      setRequestId(undefined);
 
       const txHash = await writeContractAsync({
         address: PACK_MANAGER_ADDRESS,
@@ -49,28 +59,58 @@ export function usePurchasePack(): PurchasePackResult {
 
       console.log('Transaction sent! Hash:', txHash);
       setHash(txHash);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Purchase error:', err);
-      console.error('Error details:', {
-        message: err?.message,
-        cause: err?.cause,
-        shortMessage: err?.shortMessage,
-        details: err?.details,
-        metaMessages: err?.metaMessages,
-      });
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);
       setStatus('error');
     }
   };
 
-  // Update status based on confirmation state
+  const reset = () => {
+    setStatus('idle');
+    setError(null);
+    setHash(undefined);
+    setRequestId(undefined);
+  };
+
+  // Extract requestId from transaction receipt when confirmed
   useEffect(() => {
-    if (isConfirmed && status === 'pending') {
-      console.log('Transaction confirmed! Setting status to success');
+    if (isConfirmed && receipt && status === 'pending') {
+      console.log('Transaction confirmed! Extracting requestId from logs...');
+      console.log('Receipt logs:', receipt.logs);
+
+      // Find the PackPurchased event in the logs
+      for (const log of receipt.logs) {
+        try {
+          // Check if this log is from our contract
+          if (log.address.toLowerCase() !== PACK_MANAGER_ADDRESS.toLowerCase()) {
+            continue;
+          }
+
+          const decoded = decodeEventLog({
+            abi: PACK_MANAGER_ABI,
+            data: log.data,
+            topics: log.topics,
+          });
+
+          console.log('Decoded event:', decoded);
+
+          if (decoded.eventName === 'PackPurchased') {
+            const args = decoded.args as { requestId: bigint };
+            console.log('Found PackPurchased event, requestId:', args.requestId.toString());
+            setRequestId(args.requestId);
+            break;
+          }
+        } catch (e) {
+          // Not a PackPurchased event, continue
+          console.log('Could not decode log:', e);
+        }
+      }
+
       setStatus('success');
     }
-  }, [isConfirmed, status]);
+  }, [isConfirmed, receipt, status]);
 
   const isPending = status === 'pending';
 
@@ -81,6 +121,8 @@ export function usePurchasePack(): PurchasePackResult {
     isPending,
     isConfirming,
     isConfirmed,
+    requestId,
     purchasePack,
+    reset,
   };
 }
