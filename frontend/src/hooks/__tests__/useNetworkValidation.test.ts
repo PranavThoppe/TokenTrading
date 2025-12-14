@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useNetworkValidation } from '../useNetworkValidation';
 import * as wagmi from 'wagmi';
-import { createMockUseAccount } from '../../test/utils/wagmiMocks';
+import { createMockUseAccount, createMockUseSwitchChain } from '../../test/utils/wagmiMocks';
 
 vi.mock('wagmi', () => ({
   useAccount: vi.fn(),
@@ -28,21 +28,9 @@ describe('useNetworkValidation', () => {
         createMockUseAccount({ isConnected: true })
       );
       vi.mocked(wagmi.useChainId).mockReturnValue(11155111);
-      vi.mocked(wagmi.useSwitchChain).mockReturnValue({
-        switchChain: vi.fn(),
-        isPending: false,
-        isSuccess: false,
-        isError: false,
-        error: null,
-        data: undefined,
-        reset: vi.fn(),
-        status: 'idle',
-        variables: undefined,
-        isIdle: true,
-        failureCount: 0,
-        failureReason: null,
-        submittedAt: 0,
-      });
+      vi.mocked(wagmi.useSwitchChain).mockReturnValue(
+        createMockUseSwitchChain()
+      );
 
       const { result } = renderHook(() => useNetworkValidation());
 
@@ -56,21 +44,9 @@ describe('useNetworkValidation', () => {
         createMockUseAccount({ isConnected: true })
       );
       vi.mocked(wagmi.useChainId).mockReturnValue(1); // Mainnet
-      vi.mocked(wagmi.useSwitchChain).mockReturnValue({
-        switchChain: vi.fn(),
-        isPending: false,
-        isSuccess: false,
-        isError: false,
-        error: null,
-        data: undefined,
-        reset: vi.fn(),
-        status: 'idle',
-        variables: undefined,
-        isIdle: true,
-        failureCount: 0,
-        failureReason: null,
-        submittedAt: 0,
-      });
+      vi.mocked(wagmi.useSwitchChain).mockReturnValue(
+        createMockUseSwitchChain()
+      );
 
       const { result } = renderHook(() => useNetworkValidation());
 
@@ -84,21 +60,9 @@ describe('useNetworkValidation', () => {
         createMockUseAccount({ isConnected: true })
       );
       vi.mocked(wagmi.useChainId).mockReturnValue(11155111);
-      vi.mocked(wagmi.useSwitchChain).mockReturnValue({
-        switchChain: vi.fn(),
-        isPending: false,
-        isSuccess: false,
-        isError: false,
-        error: null,
-        data: undefined,
-        reset: vi.fn(),
-        status: 'idle',
-        variables: undefined,
-        isIdle: true,
-        failureCount: 0,
-        failureReason: null,
-        submittedAt: 0,
-      });
+      vi.mocked(wagmi.useSwitchChain).mockReturnValue(
+        createMockUseSwitchChain()
+      );
 
       const { result } = renderHook(() => useNetworkValidation());
 
@@ -111,21 +75,9 @@ describe('useNetworkValidation', () => {
         createMockUseAccount({ isConnected: true })
       );
       vi.mocked(wagmi.useChainId).mockReturnValue(1);
-      vi.mocked(wagmi.useSwitchChain).mockReturnValue({
-        switchChain: mockSwitchChain,
-        isPending: false,
-        isSuccess: false,
-        isError: false,
-        error: null,
-        data: undefined,
-        reset: vi.fn(),
-        status: 'idle',
-        variables: undefined,
-        isIdle: true,
-        failureCount: 0,
-        failureReason: null,
-        submittedAt: 0,
-      });
+      vi.mocked(wagmi.useSwitchChain).mockReturnValue(
+        createMockUseSwitchChain({ switchChain: mockSwitchChain })
+      );
 
       const { result } = renderHook(() => useNetworkValidation());
 
@@ -139,21 +91,9 @@ describe('useNetworkValidation', () => {
         createMockUseAccount({ isConnected: true })
       );
       vi.mocked(wagmi.useChainId).mockReturnValue(11155111);
-      vi.mocked(wagmi.useSwitchChain).mockReturnValue({
-        switchChain: vi.fn(),
-        isPending: false,
-        isSuccess: false,
-        isError: false,
-        error: null,
-        data: undefined,
-        reset: vi.fn(),
-        status: 'idle',
-        variables: undefined,
-        isIdle: true,
-        failureCount: 0,
-        failureReason: null,
-        submittedAt: 0,
-      });
+      vi.mocked(wagmi.useSwitchChain).mockReturnValue(
+        createMockUseSwitchChain()
+      );
 
       const { result } = renderHook(() => useNetworkValidation());
 
@@ -165,21 +105,11 @@ describe('useNetworkValidation', () => {
         createMockUseAccount({ isConnected: true })
       );
       vi.mocked(wagmi.useChainId).mockReturnValue(11155111);
-      vi.mocked(wagmi.useSwitchChain).mockReturnValue({
-        switchChain: undefined,
-        isPending: false,
-        isSuccess: false,
-        isError: false,
-        error: null,
-        data: undefined,
-        reset: vi.fn(),
-        status: 'idle',
-        variables: undefined,
-        isIdle: true,
-        failureCount: 0,
-        failureReason: null,
-        submittedAt: 0,
-      });
+      // Mock a scenario where switchChain might be unavailable by using a function that returns undefined
+      const mockSwitchChainValue = createMockUseSwitchChain();
+      // @ts-expect-error - Testing case where switchChain might be undefined
+      mockSwitchChainValue.switchChain = undefined;
+      vi.mocked(wagmi.useSwitchChain).mockReturnValue(mockSwitchChainValue);
 
       const { result } = renderHook(() => useNetworkValidation());
 

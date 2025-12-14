@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient } from 'wagmi';
 import { CARD_NFT_ABI } from '@/lib/abis';
 import { CARD_NFT_ADDRESS } from '@/lib/contracts';
@@ -51,7 +51,6 @@ export function useUserCards(): UseUserCardsResult {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { cards, setCards, setLoading, setError, isLoading, error } = useCollectionStore();
-  const [tokenIds, setTokenIds] = useState<bigint[]>([]);
 
   // Fetch card metadata for a single token
   const fetchCardMetadata = useCallback(async (tokenId: bigint): Promise<Card | null> => {
@@ -200,7 +199,6 @@ export function useUserCards(): UseUserCardsResult {
       const sentIds = new Set(sentLogs.map(log => (log.args.tokenId as bigint).toString()));
       
       const ownedIds = [...receivedIds].filter(id => !sentIds.has(id)).map(id => BigInt(id));
-      setTokenIds(ownedIds);
 
       // Fetch metadata for all owned tokens
       const fetchedCards = await fetchCardsByIds(ownedIds);

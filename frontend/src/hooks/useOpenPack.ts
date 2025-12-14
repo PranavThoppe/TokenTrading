@@ -94,7 +94,7 @@ export function useOpenPack(): OpenPackResult {
           console.log('[useOpenPack] Decoded event:', decoded.eventName);
 
           if (decoded.eventName === 'PackOpened') {
-            const args = decoded.args as { tokenIds: bigint[] };
+            const args = decoded.args as unknown as { tokenIds: bigint[] };
             foundTokenIds = args.tokenIds;
             console.log('[useOpenPack] Found PackOpened event! Token IDs:', args.tokenIds.map(id => id.toString()));
             setMintedTokenIds(args.tokenIds);

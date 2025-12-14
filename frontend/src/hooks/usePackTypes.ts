@@ -14,7 +14,7 @@ export function usePackTypes() {
   const [error, setError] = useState<Error | null>(null);
 
   // Only enable queries if we have a valid contract address
-  const isEnabled = !!PACK_MANAGER_ADDRESS && PACK_MANAGER_ADDRESS !== '';
+  const isEnabled = !!PACK_MANAGER_ADDRESS;
 
   // Fetch pack type 0
   const pack0 = useReadContract({
@@ -68,13 +68,13 @@ export function usePackTypes() {
     const fetchedPacks: PackType[] = [];
 
     if (pack0.data) {
-      fetchedPacks.push(buildPackType(0, pack0.data));
+      fetchedPacks.push(buildPackType(0, pack0.data as { price: bigint; cardCount: number; rarityWeights: readonly number[] }));
     }
     if (pack1.data) {
-      fetchedPacks.push(buildPackType(1, pack1.data));
+      fetchedPacks.push(buildPackType(1, pack1.data as { price: bigint; cardCount: number; rarityWeights: readonly number[] }));
     }
     if (pack2.data) {
-      fetchedPacks.push(buildPackType(2, pack2.data));
+      fetchedPacks.push(buildPackType(2, pack2.data as { price: bigint; cardCount: number; rarityWeights: readonly number[] }));
     }
 
     setPacks(fetchedPacks);

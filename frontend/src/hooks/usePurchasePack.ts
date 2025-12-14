@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { decodeEventLog } from 'viem';
 import { PACK_MANAGER_ABI } from '@/lib/abis';
 import { PACK_MANAGER_ADDRESS } from '@/lib/contracts';
@@ -27,7 +27,6 @@ export function usePurchasePack(): PurchasePackResult {
   const [hash, setHash] = useState<string | undefined>();
   const [requestId, setRequestId] = useState<bigint | undefined>();
 
-  const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
   const {
@@ -86,7 +85,7 @@ export function usePurchasePack(): PurchasePackResult {
           });
 
           if (decoded.eventName === 'PackPurchased') {
-            const args = decoded.args as { requestId: bigint };
+            const args = decoded.args as unknown as { requestId: bigint };
             setRequestId(args.requestId);
             break;
           }

@@ -204,7 +204,7 @@ function SingleCardReveal({ card, index, isRevealed, onReveal }: SingleCardRevea
 /**
  * Card reveal component with sequential flip animation
  */
-export function CardReveal({ cards, onComplete, isComplete }: CardRevealProps) {
+export function CardReveal({ cards, onComplete }: CardRevealProps) {
   const [revealedIndices, setRevealedIndices] = useState<Set<number>>(new Set());
   const [allRevealed, setAllRevealed] = useState(false);
 

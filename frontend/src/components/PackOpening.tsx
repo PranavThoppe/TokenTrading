@@ -33,7 +33,7 @@ export function PackOpening({
   const [showRevealModal, setShowRevealModal] = useState(false);
   const [revealedCards, setRevealedCards] = useState<Card[]>([]);
 
-  const { openPack, status, error, hash, isPending, isConfirmed, mintedTokenIds, reset } =
+  const { openPack, status, error, hash, isPending, mintedTokenIds, reset } =
     useOpenPack();
   const { fetchCardsByIds } = useUserCards();
 
