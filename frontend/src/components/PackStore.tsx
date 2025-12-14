@@ -1,7 +1,29 @@
+/**
+ * PackStore Component - Migrated to CSS Modules
+ * 
+ * This component demonstrates:
+ * - Using CSS Modules for component styling
+ * - Responsive grid layouts with CSS Grid
+ * - Loading states and skeleton screens
+ * - Empty states
+ * - CSS animations
+ * 
+ * CSS Modules Pattern:
+ * 1. Import styles: import styles from './PackStore.module.css'
+ * 2. Use classes: className={styles.container}
+ * 3. Combine classes: className={`${styles.base} ${styles.variant}`}
+ * 
+ * References:
+ * - CSS Grid Layout: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Grid_Layout
+ * - CSS Animations: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Animations
+ */
+
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { PackCard } from './PackCard';
 import type { PackType } from '@/types/contracts';
+// Import CSS Module - Vite automatically handles .module.css files
+import styles from './PackStore.module.css';
 
 interface PackStoreProps {
   packs: PackType[];
@@ -28,14 +50,15 @@ export function PackStore({
     setDisplayPacks(packs);
   }, [packs]);
 
+  // Wallet not connected state
   if (!isConnected) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <h2 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+      <div className={styles.emptyState}>
+        <div className={styles.emptyStateContent}>
+          <h2 className={`${styles.emptyStateTitle} ${styles.emptyStateTitleGradient}`}>
             Connect Your Wallet
           </h2>
-          <p className="text-white/70 text-lg leading-relaxed">
+          <p className={styles.emptyStateText}>
             Please connect your wallet to browse and purchase packs
           </p>
         </div>
@@ -43,46 +66,23 @@ export function PackStore({
     );
   }
 
+  // Loading state with skeleton screens
+  // Skeleton pattern: Show placeholder content that mimics the final layout
   if (isLoading) {
     return (
-      <div className="space-y-8">
-        {/* Header Skeleton */}
-        <div className="text-center mb-12 animate-pulse">
-          <div className="h-10 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 rounded-lg w-64 mx-auto mb-4" />
-          <div className="h-6 bg-white/10 rounded-lg w-96 mx-auto" />
+      <div className={styles.skeletonContainer}>
+        {/* Header skeleton */}
+        <div className={styles.skeletonHeader}>
+          <div className={styles.skeletonTitle} />
+          <div className={styles.skeletonSubtitle} />
         </div>
 
-        {/* Pack Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {/* Pack grid skeleton - shows 3 placeholder cards */}
+        <div className={styles.grid}>
           {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-8 animate-pulse"
-            >
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex-1">
-                  <div className="h-7 bg-white/10 rounded-lg mb-3 w-3/4" />
-                  <div className="h-4 bg-white/10 rounded-lg w-1/2" />
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20" />
-              </div>
-              <div className="space-y-3 mb-8">
-                <div className="h-3 bg-white/10 rounded-full" />
-                {[...Array(5)].map((_, j) => (
-                  <div key={j} className="flex items-center gap-3">
-                    <div className="h-2 bg-white/10 rounded-full w-20" />
-                    <div className="flex-1 h-2 bg-white/10 rounded-full" />
-                    <div className="h-2 bg-white/10 rounded-full w-8" />
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center justify-between pt-6 border-t border-white/10">
-                <div className="space-y-2">
-                  <div className="h-3 bg-white/10 rounded w-12" />
-                  <div className="h-8 bg-white/10 rounded-lg w-24" />
-                </div>
-                <div className="h-10 bg-white/10 rounded-lg w-32" />
-              </div>
+            <div key={i} className={styles.skeletonCard}>
+              {/* Skeleton card content - simplified structure */}
+              <div style={{ height: '200px' }} />
             </div>
           ))}
         </div>
@@ -90,21 +90,22 @@ export function PackStore({
     );
   }
 
+  // Empty state (no packs available or error)
   if (displayPacks.length === 0) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <h2 className="text-3xl font-bold text-white mb-3">
+      <div className={styles.emptyState}>
+        <div className={styles.emptyStateContent}>
+          <h2 className={styles.emptyStateTitle}>
             {error ? 'Error Loading Packs' : 'No Packs Available'}
           </h2>
-          {error ? (
-            <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-              <p className="text-red-400 text-sm font-medium">
+          {error && (
+            <div className={styles.errorContainer}>
+              <p className={styles.errorText}>
                 {error.message}
               </p>
             </div>
-          ) : null}
-          <p className="text-white/70 text-lg leading-relaxed">
+          )}
+          <p className={styles.emptyStateText}>
             {error
               ? 'Please check your contract configuration and try again'
               : 'Check back later for new pack types'}
@@ -114,36 +115,41 @@ export function PackStore({
     );
   }
 
+  // Main content - pack store with grid layout
   return (
-    <div className="space-y-8 px-4 py-6 max-w-7xl mx-auto">
-      {/* Enhanced Header */}
-      <div className="text-center space-y-3">
+    <div className={styles.container}>
+      {/* Header section */}
+      <div className={styles.header}>
         <div>
-          <h2 className="text-4xl md:text-5xl font-extrabold mb-3 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+          {/* Animated gradient title using CSS keyframes */}
+          <h2 className={styles.title}>
             Pack Store
           </h2>
-          <p className="text-lg text-white/70 max-w-2xl mx-auto leading-relaxed">
+          <p className={styles.subtitle}>
             Choose your pack and start building your collection
           </p>
         </div>
+        {/* Pack count badge */}
         {displayPacks.length > 0 && (
-          <div className="pt-3">
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-white/70">
+          <div>
+            <span className={styles.badge}>
               {displayPacks.length} {displayPacks.length === 1 ? 'Pack' : 'Packs'} Available
             </span>
           </div>
         )}
       </div>
 
-      {/* Pack Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* Responsive grid layout for pack cards */}
+      {/* CSS Grid automatically handles responsive breakpoints */}
+      <div className={styles.grid}>
         {displayPacks.map((pack, index) => (
+          // Card wrapper with fade-in animation
+          // Animation delay increases for each card (staggered animation)
           <div
             key={pack.id}
-            className="animate-fade-in"
+            className={styles.cardWrapper}
             style={{
               animationDelay: `${index * 100}ms`,
-              animationFillMode: 'both',
             }}
           >
             <PackCard

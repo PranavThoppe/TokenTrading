@@ -1,0 +1,321 @@
+/**
+ * CSS Modules for PackCard Component
+ * 
+ * CSS Modules provide scoped CSS - each class name is automatically scoped to the component,
+ * preventing style conflicts. Vite handles this automatically for .module.css files.
+ * 
+ * References:
+ * - https://github.com/css-modules/css-modules
+ * - https://vitejs.dev/guide/features.html#css-modules
+ * 
+ * How it works:
+ * 1. Import: import styles from './PackCard.module.css'
+ * 2. Use: className={styles.card} (becomes something like "PackCard_card_abc123")
+ * 3. Scoped: Styles only apply to this component
+ */
+
+/* Base card container with common styles */
+.card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem; /* rounded-2xl equivalent */
+  border: 2px solid;
+  padding: 1.5rem; /* p-6 */
+  backdrop-filter: blur(4px);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+/* Hover effects - lifted from card with shadow */
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Card glow overlay that appears on hover */
+.cardGlow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.card:hover .cardGlow {
+  opacity: 1;
+}
+
+/* Content wrapper with z-index to appear above glow */
+.content {
+  position: relative;
+  z-index: 10;
+}
+
+/* Header section */
+.header {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 800; /* font-extrabold */
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 0.875rem; /* text-sm */
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Rarity distribution section */
+.raritySection {
+  margin-bottom: 1.5rem;
+}
+
+.rarityTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.rarityList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rarityItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rarityLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.rarityName {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.rarityPercent {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Progress bar container */
+.rarityBar {
+  height: 0.5rem; /* h-2 */
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+/* Progress bar fill - width is set inline via style prop */
+.rarityBarFill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+/* Rarity-specific colors for progress bars */
+.rarityCommon {
+  background: linear-gradient(to right, rgb(156, 163, 175), rgb(75, 85, 99));
+}
+
+.rarityUncommon {
+  background: linear-gradient(to right, rgb(74, 222, 128), rgb(22, 163, 74));
+}
+
+.rarityRare {
+  background: linear-gradient(to right, rgb(96, 165, 250), rgb(37, 99, 235));
+}
+
+.rarityEpic {
+  background: linear-gradient(to right, rgb(192, 132, 252), rgb(147, 51, 234));
+}
+
+.rarityLegendary {
+  background: linear-gradient(to right, rgb(250, 204, 21), rgb(202, 138, 4));
+}
+
+/* Price and button section */
+.priceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.priceContainer {
+  text-align: center;
+}
+
+.priceLabel {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.priceValue {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.priceAmount {
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 800; /* font-extrabold */
+  color: white;
+}
+
+.priceUnit {
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Purchase button */
+.button {
+  width: 100%;
+  padding: 0.75rem 1rem; /* py-3 */
+  border-radius: 0.75rem; /* rounded-xl */
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.button:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Button hover overlay */
+.buttonHover {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.button:hover .buttonHover {
+  opacity: 1;
+}
+
+.buttonContent {
+  position: relative;
+  z-index: 10;
+}
+
+/* Pack type variants - Starter (Green) */
+.cardStarter {
+  border-color: rgba(34, 197, 94, 0.5); /* green-500/50 */
+  background: linear-gradient(to bottom right, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.1));
+}
+
+.cardStarter:hover {
+  border-color: rgba(74, 222, 128, 1); /* green-400 */
+  box-shadow: 0 25px 50px -12px rgba(34, 197, 94, 0.3);
+}
+
+.cardGlowStarter {
+  background: linear-gradient(to bottom right, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.1));
+}
+
+.titleStarter {
+  color: rgb(74, 222, 128); /* green-400 */
+}
+
+.buttonStarter {
+  background: linear-gradient(to right, rgb(34, 197, 94), rgb(22, 163, 74)); /* green-500 to green-600 */
+}
+
+.buttonHoverStarter {
+  background: linear-gradient(to right, rgb(22, 163, 74), rgb(21, 128, 61)); /* green-600 to green-700 */
+}
+
+/* Pack type variants - Standard (Yellow) */
+.cardStandard {
+  border-color: rgba(234, 179, 8, 0.5); /* yellow-500/50 */
+  background: linear-gradient(to bottom right, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.1));
+}
+
+.cardStandard:hover {
+  border-color: rgba(250, 204, 21, 1); /* yellow-400 */
+  box-shadow: 0 25px 50px -12px rgba(234, 179, 8, 0.3);
+}
+
+.cardGlowStandard {
+  background: linear-gradient(to bottom right, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.1));
+}
+
+.titleStandard {
+  color: rgb(250, 204, 21); /* yellow-400 */
+}
+
+.buttonStandard {
+  background: linear-gradient(to right, rgb(234, 179, 8), rgb(202, 138, 4)); /* yellow-500 to yellow-600 */
+}
+
+.buttonHoverStandard {
+  background: linear-gradient(to right, rgb(202, 138, 4), rgb(161, 98, 7)); /* yellow-600 to yellow-700 */
+}
+
+/* Pack type variants - Premium (Blue) */
+.cardPremium {
+  border-color: rgba(59, 130, 246, 0.5); /* blue-500/50 */
+  background: linear-gradient(to bottom right, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1));
+}
+
+.cardPremium:hover {
+  border-color: rgba(96, 165, 250, 1); /* blue-400 */
+  box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.3);
+}
+
+.cardGlowPremium {
+  background: linear-gradient(to bottom right, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1));
+}
+
+.titlePremium {
+  color: rgb(96, 165, 250); /* blue-400 */
+}
+
+.buttonPremium {
+  background: linear-gradient(to right, rgb(59, 130, 246), rgb(37, 99, 235)); /* blue-500 to blue-600 */
+}
+
+.buttonHoverPremium {
+  background: linear-gradient(to right, rgb(37, 99, 235), rgb(29, 78, 216)); /* blue-600 to blue-700 */
+}

@@ -1,5 +1,26 @@
+/**
+ * PackCard Component - Migrated to CSS Modules
+ * 
+ * CSS Modules Example:
+ * - Import: import styles from './PackCard.module.css'
+ * - Use: className={styles.card} 
+ * - Result: Class names are automatically scoped (e.g., "PackCard_card_abc123")
+ * 
+ * Benefits:
+ * 1. No class name conflicts - styles are scoped to this component
+ * 2. Type-safe - TypeScript knows about available classes
+ * 3. No build-time issues - all classes are always available
+ * 4. Better organization - styles live next to components
+ * 
+ * References:
+ * - https://github.com/css-modules/css-modules
+ * - https://vitejs.dev/guide/features.html#css-modules
+ */
+
 import { formatEther } from 'viem';
 import type { PackType } from '@/types/contracts';
+// Import CSS Module - Vite automatically handles .module.css files
+import styles from './PackCard.module.css';
 
 interface PackCardProps {
   pack: PackType;
@@ -9,87 +30,91 @@ interface PackCardProps {
 
 /**
  * Component displaying a single pack with details and purchase button
+ * 
+ * Pack color scheme:
+ * - Starter Pack: Green
+ * - Standard Pack: Yellow  
+ * - Premium Pack: Blue
  */
 export function PackCard({ pack, onPurchase, isLoading = false }: PackCardProps) {
   const priceInEth = formatEther(pack.price);
   
-  // Determine pack type and colors based on name
+  // Determine pack type based on name to apply correct color variant
+  // CSS Modules approach: We'll combine base classes with variant classes
   const packName = pack.name.toLowerCase();
-  let packColors = {
-    border: 'border-green-500/50',
-    bg: 'from-green-500/20 to-green-600/10',
-    hoverBorder: 'hover:border-green-400',
-    hoverShadow: 'hover:shadow-green-500/30',
-    button: 'from-green-500 to-green-600',
-    buttonHover: 'from-green-600 to-green-700',
-    textAccent: 'text-green-400',
-  };
+  
+  // Determine which variant classes to use
+  // This is similar to Tailwind's conditional classes, but with CSS Modules
+  let cardVariant = styles.cardStarter;
+  let glowVariant = styles.cardGlowStarter;
+  let titleVariant = styles.titleStarter;
+  let buttonVariant = styles.buttonStarter;
+  let buttonHoverVariant = styles.buttonHoverStarter;
 
   if (packName.includes('standard')) {
-    packColors = {
-      border: 'border-yellow-500/50',
-      bg: 'from-yellow-500/20 to-yellow-600/10',
-      hoverBorder: 'hover:border-yellow-400',
-      hoverShadow: 'hover:shadow-yellow-500/30',
-      button: 'from-yellow-500 to-yellow-600',
-      buttonHover: 'from-yellow-600 to-yellow-700',
-      textAccent: 'text-yellow-400',
-    };
+    cardVariant = styles.cardStandard;
+    glowVariant = styles.cardGlowStandard;
+    titleVariant = styles.titleStandard;
+    buttonVariant = styles.buttonStandard;
+    buttonHoverVariant = styles.buttonHoverStandard;
   } else if (packName.includes('premium')) {
-    packColors = {
-      border: 'border-blue-500/50',
-      bg: 'from-blue-500/20 to-blue-600/10',
-      hoverBorder: 'hover:border-blue-400',
-      hoverShadow: 'hover:shadow-blue-500/30',
-      button: 'from-blue-500 to-blue-600',
-      buttonHover: 'from-blue-600 to-blue-700',
-      textAccent: 'text-blue-400',
-    };
+    cardVariant = styles.cardPremium;
+    glowVariant = styles.cardGlowPremium;
+    titleVariant = styles.titlePremium;
+    buttonVariant = styles.buttonPremium;
+    buttonHoverVariant = styles.buttonHoverPremium;
   }
 
-  // Determine rarity colors based on weights
-  const rarityColors = [
-    'from-gray-400 to-gray-600',      // Common
-    'from-green-400 to-green-600',    // Uncommon
-    'from-blue-400 to-blue-600',      // Rare
-    'from-purple-400 to-purple-600',  // Epic
-    'from-yellow-400 to-yellow-600',  // Legendary
+  // Rarity colors for progress bars
+  // Using CSS Modules classes for each rarity type
+  const rarityColorClasses = [
+    styles.rarityCommon,      // Common - Gray
+    styles.rarityUncommon,    // Uncommon - Green
+    styles.rarityRare,        // Rare - Blue
+    styles.rarityEpic,        // Epic - Purple
+    styles.rarityLegendary,   // Legendary - Yellow
   ];
 
   const rarityNames = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 
   return (
-    <div className={`group relative overflow-hidden rounded-2xl border-2 ${packColors.border} bg-gradient-to-br ${packColors.bg} backdrop-blur-sm p-6 transition-all duration-300 ${packColors.hoverBorder} ${packColors.hoverShadow} hover:shadow-2xl hover:-translate-y-1`}>
-      {/* Card glow effect */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${packColors.bg} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+    // Combining multiple CSS Module classes using template literals
+    // CSS Modules automatically handles class name scoping
+    <div className={`${styles.card} ${cardVariant}`}>
+      {/* Card glow effect that appears on hover */}
+      <div className={`${styles.cardGlow} ${glowVariant}`} />
       
-      {/* Content */}
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="mb-6 text-center">
-          <h3 className={`text-3xl font-extrabold ${packColors.textAccent} mb-2`}>
+      {/* Content wrapper with z-index to appear above glow */}
+      <div className={styles.content}>
+        {/* Header section */}
+        <div className={styles.header}>
+          {/* Title with pack-specific color variant */}
+          <h3 className={`${styles.title} ${titleVariant}`}>
             {pack.name}
           </h3>
-          <p className="text-sm text-white/80">
+          <p className={styles.subtitle}>
             {pack.cardCount} cards per pack
           </p>
         </div>
 
-        {/* Rarity Distribution */}
-        <div className="mb-6 space-y-2">
-          <p className="text-xs font-semibold text-white/90 uppercase tracking-wider text-center mb-3">
+        {/* Rarity Distribution Section */}
+        <div className={styles.raritySection}>
+          <p className={styles.rarityTitle}>
             Rarity Distribution
           </p>
-          <div className="space-y-2">
+          <div className={styles.rarityList}>
             {pack.rarityWeights.map((weight, index) => (
-              <div key={index} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-white/80">{rarityNames[index]}</span>
-                  <span className="font-semibold text-white/90">{weight}%</span>
+              <div key={index} className={styles.rarityItem}>
+                {/* Rarity label with name and percentage */}
+                <div className={styles.rarityLabel}>
+                  <span className={styles.rarityName}>{rarityNames[index]}</span>
+                  <span className={styles.rarityPercent}>{weight}%</span>
                 </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                {/* Progress bar container */}
+                <div className={styles.rarityBar}>
+                  {/* Progress bar fill with dynamic width and rarity-specific color */}
                   <div
-                    className={`h-full bg-gradient-to-r ${rarityColors[index]} rounded-full transition-all duration-500`}
+                    className={`${styles.rarityBarFill} ${rarityColorClasses[index]}`}
                     style={{ width: `${weight}%` }}
                   />
                 </div>
@@ -98,24 +123,26 @@ export function PackCard({ pack, onPurchase, isLoading = false }: PackCardProps)
           </div>
         </div>
 
-        {/* Price and Button */}
-        <div className="space-y-4 pt-6 border-t border-white/20">
-          <div className="text-center">
-            <p className="text-xs text-white/60 mb-1 uppercase tracking-wide">Price</p>
-            <div className="flex items-baseline justify-center gap-1">
-              <p className="text-3xl font-extrabold text-white">{priceInEth}</p>
-              <span className="text-sm font-semibold text-white/70">ETH</span>
+        {/* Price and Button Section */}
+        <div className={styles.priceSection}>
+          <div className={styles.priceContainer}>
+            <p className={styles.priceLabel}>Price</p>
+            <div className={styles.priceValue}>
+              <p className={styles.priceAmount}>{priceInEth}</p>
+              <span className={styles.priceUnit}>ETH</span>
             </div>
           </div>
+          {/* Purchase button with pack-specific color variant */}
           <button
             onClick={() => onPurchase(pack.id)}
             disabled={isLoading || !pack.active}
-            className={`w-full py-3 rounded-xl bg-gradient-to-r ${packColors.button} text-white font-bold text-sm transition-all duration-300 hover:shadow-lg ${packColors.hoverShadow} hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none overflow-hidden group/btn`}
+            className={`${styles.button} ${buttonVariant}`}
           >
-            <span className="relative z-10">
+            {/* Button hover overlay effect */}
+            <div className={`${styles.buttonHover} ${buttonHoverVariant}`} />
+            <span className={styles.buttonContent}>
               {isLoading ? 'Processing...' : !pack.active ? 'Unavailable' : 'Purchase Pack'}
             </span>
-            <div className={`absolute inset-0 bg-gradient-to-r ${packColors.buttonHover} opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300`} />
           </button>
         </div>
       </div>
