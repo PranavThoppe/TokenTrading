@@ -54,9 +54,9 @@ contract Configure is Script {
         packManager.configurePackType(1, 0.005 ether, 5, standardWeights);
         console.log("Pack 1: Standard Pack - 5 cards, 0.005 ETH");
         
-        // Premium Pack - 10 cards, 0.01 ETH
-        packManager.configurePackType(2, 0.01 ether, 10, premiumWeights);
-        console.log("Pack 2: Premium Pack - 10 cards, 0.01 ETH");
+        // Premium Pack - 5 cards, 0.01 ETH (better rarity odds than Standard)
+        packManager.configurePackType(2, 0.01 ether, 5, premiumWeights);
+        console.log("Pack 2: Premium Pack - 5 cards, 0.01 ETH");
         
         // Add Mock Player Data
         console.log("\n=== Adding Mock Player Data ===");
