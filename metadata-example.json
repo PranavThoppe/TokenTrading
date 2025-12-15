@@ -1,0 +1,37 @@
+{
+  "name": "Patrick Mahomes - Common",
+  "description": "NFL Trading Card - Patrick Mahomes (Common Rarity)",
+  "image": "ipfs://QmYourImageHash/player-1-common.png",
+  "external_url": "https://your-website.com/card/1",
+  "attributes": [
+    {
+      "trait_type": "Player",
+      "value": "Patrick Mahomes"
+    },
+    {
+      "trait_type": "Position",
+      "value": "QB"
+    },
+    {
+      "trait_type": "Team",
+      "value": "Kansas City Chiefs"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common",
+      "display_type": "string"
+    },
+    {
+      "trait_type": "Player ID",
+      "value": "1",
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Rating",
+      "value": 99,
+      "display_type": "number",
+      "max_value": 100
+    }
+  ]
+}
+

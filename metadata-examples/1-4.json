@@ -1,0 +1,37 @@
+{
+  "name": "Patrick Mahomes - Legendary",
+  "description": "NFL Trading Card - Patrick Mahomes (Legendary Rarity)",
+  "image": "https://violet-magnetic-mite-770.mypinata.cloud/ipfs/bafybeia6ary7abgbbeqqbgxqtwnqjn2b5r4fvkk2ainlzn6pemxsexf7qi",
+  "external_url": "https://your-website.com/card/1/legendary",
+  "attributes": [
+    {
+      "trait_type": "Player",
+      "value": "Patrick Mahomes"
+    },
+    {
+      "trait_type": "Position",
+      "value": "QB"
+    },
+    {
+      "trait_type": "Team",
+      "value": "Kansas City Chiefs"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Legendary",
+      "display_type": "string"
+    },
+    {
+      "trait_type": "Player ID",
+      "value": "1",
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Rating",
+      "value": 99,
+      "display_type": "number",
+      "max_value": 100
+    }
+  ]
+}
+

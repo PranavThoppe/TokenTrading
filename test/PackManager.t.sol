@@ -15,8 +15,8 @@ contract PackManagerTest is TestHelper {
     MockVRFCoordinator public mockVRFCoordinator;
     
     // Test constants
-    string constant NAME = "Fantasy Football Cards";
-    string constant SYMBOL = "FFC";
+    string constant NAME = "NFL Trading Cards";
+    string constant SYMBOL = "NFL";
     string constant BASE_URI = "ipfs://QmTest/";
     
     // VRF configuration

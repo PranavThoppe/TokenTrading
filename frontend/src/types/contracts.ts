@@ -30,8 +30,8 @@ export interface CardMetadata {
  * Player statistics
  */
 export interface PlayerStats {
-  goals: number;
-  assists: number;
+  touchdowns: number;
+  passingYards: number;
   rating: number;
 }
 

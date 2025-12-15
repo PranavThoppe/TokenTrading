@@ -67,8 +67,8 @@ forge script script/Configure.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
 ## Contract Details
 
 ### CardNFT
-- **Name**: Fantasy Football Cards
-- **Symbol**: FFC
+- **Name**: NFL Trading Cards
+- **Symbol**: NFL
 - **Standard**: ERC-721
 - **Features**:
   - Minting with metadata (player ID, rarity, timestamp)

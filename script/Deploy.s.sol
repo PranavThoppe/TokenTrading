@@ -20,7 +20,7 @@ contract Deploy is Script {
         console.log("Deployer address:", vm.addr(deployerPrivateKey));
         
         // 1. Deploy CardNFT
-        CardNFT cardNFT = new CardNFT("Fantasy Football Cards", "FFC");
+        CardNFT cardNFT = new CardNFT("NFL Trading Cards", "NFL");
         console.log("CardNFT deployed at:", address(cardNFT));
         
         // 2. Deploy PackManager
@@ -40,10 +40,23 @@ contract Deploy is Script {
         cardNFT.grantRole(cardNFT.MINTER_ROLE(), address(packManager));
         console.log("Granted MINTER_ROLE to PackManager");
         
+        // TODO: SET CAPS HERE - Configure rarity-based card caps after deployment
+        // Note: maxCardsPerRarity defaults to 0 (unlimited) for all rarities
+        // To set limits, call: cardNFT.setMaxCardsPerRarity(rarity, maxCards)
+        // Example configuration:
+        //   cardNFT.setMaxCardsPerRarity(0, 1000); // Common: 1000 cards max per player
+        //   cardNFT.setMaxCardsPerRarity(1, 500);  // Uncommon: 500 cards max per player
+        //   cardNFT.setMaxCardsPerRarity(2, 200);  // Rare: 200 cards max per player
+        //   cardNFT.setMaxCardsPerRarity(3, 50);   // Epic: 50 cards max per player
+        //   cardNFT.setMaxCardsPerRarity(4, 10);   // Legendary: 10 cards max per player
+        
         vm.stopBroadcast();
         
         console.log("Deployment complete!");
         console.log("CardNFT:", address(cardNFT));
         console.log("PackManager:", address(packManager));
+        console.log("\nNext steps:");
+        console.log("1. Set rarity-based card caps (optional): cardNFT.setMaxCardsPerRarity(rarity, maxCards)");
+        console.log("2. Run Configure.s.sol to set up pack types and player pools");
     }
 }

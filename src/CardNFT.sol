@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @title CardNFT
- * @notice ERC-721 NFT contract for fantasy football trading cards
- * @dev Implements card minting with metadata and rarity tracking
+ * @notice ERC-721 NFT contract for NFL football trading cards
+ * @dev Implements card minting with metadata, rarity tracking, and rarity-based per-player card limits
  */
 contract CardNFT is ERC721, AccessControl {
 
@@ -31,6 +31,16 @@ contract CardNFT is ERC721, AccessControl {
     // Mapping to track supply by rarity level
     mapping(uint8 => uint256) public raritySupply;
 
+    // Mapping from playerId to number of cards minted per rarity
+    // playerId => rarity => count
+    mapping(uint256 => mapping(uint8 => uint256)) public playerCardCountByRarity;
+
+    // Maximum cards allowed per player per rarity (set by admin)
+    // rarity => maxCards (0 = unlimited)
+    // TODO: SET CAPS HERE - Configure max cards per rarity after deployment
+    // Example: Common (0) = 1000, Uncommon (1) = 500, Rare (2) = 200, Epic (3) = 50, Legendary (4) = 10
+    mapping(uint8 => uint256) public maxCardsPerRarity;
+
     // Base URI for metadata
     string private _baseTokenURI;
 
@@ -41,6 +51,8 @@ contract CardNFT is ERC721, AccessControl {
         uint256 playerId,
         uint8 rarity
     );
+
+    event MaxCardsPerRarityUpdated(uint8 indexed rarity, uint256 newMaxCards);
 
     /**
      * @notice Constructor to initialize the Card NFT contract
@@ -66,6 +78,15 @@ contract CardNFT is ERC721, AccessControl {
         uint256 playerId,
         uint8 rarity
     ) external onlyRole(MINTER_ROLE) returns (uint256) {
+        // Check if player has reached the card limit for this rarity (if limit is set)
+        uint256 maxForRarity = maxCardsPerRarity[rarity];
+        if (maxForRarity > 0) {
+            require(
+                playerCardCountByRarity[playerId][rarity] < maxForRarity,
+                "CardNFT: Player card limit reached for this rarity"
+            );
+        }
+
         // Get current token ID and increment for next mint
         uint256 tokenId = _nextTokenId++;
 
@@ -79,6 +100,9 @@ contract CardNFT is ERC721, AccessControl {
             mintTimestamp: block.timestamp,
             metadataURI: ""
         });
+
+        // Increment player card count for this rarity
+        playerCardCountByRarity[playerId][rarity]++;
 
         // Update rarity supply tracking
         raritySupply[rarity]++;
@@ -103,6 +127,8 @@ contract CardNFT is ERC721, AccessControl {
      * @notice Get the token URI for a specific card
      * @param tokenId ID of the token
      * @return URI string pointing to the card's metadata
+     * Format: baseURI + playerId + "-" + rarity + ".json"
+     * Example: "ipfs://QmXxxx/1-0.json" for player 1, Common (rarity 0)
      */
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(ownerOf(tokenId) != address(0), "CardNFT: URI query for nonexistent token");
@@ -114,8 +140,9 @@ contract CardNFT is ERC721, AccessControl {
             return metadata.metadataURI;
         }
         
-        // Otherwise construct from base URI and player ID
-        return _constructTokenURI(metadata.playerId);
+        // Otherwise construct from base URI, player ID, and rarity
+        // Format: baseURI + playerId + "-" + rarity + ".json"
+        return _constructTokenURI(metadata.playerId, metadata.rarity);
     }
 
     /**
@@ -143,16 +170,64 @@ contract CardNFT is ERC721, AccessControl {
     }
 
     /**
-     * @dev Internal helper to construct token URI from base URI and player ID
-     * @param playerId ID of the player
-     * @return Constructed URI string
+     * @notice Set the maximum number of cards allowed per player for a specific rarity
+     * @param rarity Rarity level (0=Common, 1=Uncommon, 2=Rare, 3=Epic, 4=Legendary)
+     * @param maxCards Maximum number of cards per player for this rarity (0 = unlimited)
+     * 
+     * TODO: SET CAPS HERE - Configure max cards per rarity
+     * Example usage after deployment:
+     *   setMaxCardsPerRarity(0, 1000); // Common: 1000 cards max per player
+     *   setMaxCardsPerRarity(1, 500);  // Uncommon: 500 cards max per player
+     *   setMaxCardsPerRarity(2, 200);  // Rare: 200 cards max per player
+     *   setMaxCardsPerRarity(3, 50);   // Epic: 50 cards max per player
+     *   setMaxCardsPerRarity(4, 10);   // Legendary: 10 cards max per player
      */
-    function _constructTokenURI(uint256 playerId) internal view returns (string memory) {
+    function setMaxCardsPerRarity(uint8 rarity, uint256 maxCards) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        maxCardsPerRarity[rarity] = maxCards;
+        emit MaxCardsPerRarityUpdated(rarity, maxCards);
+    }
+
+    /**
+     * @notice Get the maximum cards allowed per player for a specific rarity
+     * @param rarity Rarity level
+     * @return Maximum number of cards allowed (0 = unlimited)
+     */
+    function getMaxCardsPerRarity(uint8 rarity) external view returns (uint256) {
+        return maxCardsPerRarity[rarity];
+    }
+
+    /**
+     * @notice Get the number of cards minted for a specific player and rarity
+     * @param playerId ID of the player
+     * @param rarity Rarity level
+     * @return Number of cards minted for this player at this rarity
+     */
+    function getPlayerCardCountByRarity(uint256 playerId, uint8 rarity) external view returns (uint256) {
+        return playerCardCountByRarity[playerId][rarity];
+    }
+
+    /**
+     * @dev Internal helper to construct token URI from base URI, player ID, and rarity
+     * @param playerId ID of the player
+     * @param rarity Rarity level of the card
+     * @return Constructed URI string
+     * Format: baseURI + playerId + "-" + rarity + ".json"
+     * Example: "ipfs://QmXxxx/1-0.json" for player 1, Common (rarity 0)
+     */
+    function _constructTokenURI(uint256 playerId, uint8 rarity) internal view returns (string memory) {
         if (bytes(_baseTokenURI).length == 0) {
             return "";
         }
         
-        return string(abi.encodePacked(_baseTokenURI, _toString(playerId), ".json"));
+        // Format: baseURI + playerId + "-" + rarity + ".json"
+        // Example: "ipfs://QmXxxx/1-0.json" for player 1, Common
+        return string(abi.encodePacked(
+            _baseTokenURI,
+            _toString(playerId),
+            "-",
+            _toString(rarity),
+            ".json"
+        ));
     }
 
     /**

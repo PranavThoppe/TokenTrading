@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**TokenTrading** is a blockchain-based fantasy football trading card platform built on Ethereum. It enables users to purchase NFT card packs, open them with randomness from Chainlink VRF, collect cards, trade them peer-to-peer, and auction them.
+**TokenTrading** is a blockchain-based NFL trading card platform built on Ethereum. It enables users to purchase NFT card packs, open them with randomness from Chainlink VRF, collect cards, trade them peer-to-peer, and auction them.
 
 ---
 

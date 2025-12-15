@@ -1,7 +1,7 @@
 {
   "name": "blockchain-trading-cards",
   "version": "1.0.0",
-  "description": "Blockchain-based fantasy football trading card platform",
+  "description": "Blockchain-based NFL trading card platform",
   "scripts": {
     "build": "forge build",
     "test": "forge test",

@@ -67,7 +67,7 @@ function App() {
         {!isConnected ? (
           <div style={{ textAlign: 'center', padding: '80px 20px' }}>
             <h2 style={{ color: '#fff', fontSize: '32px', marginBottom: '16px' }}>
-              Fantasy Football Trading Cards
+              NFL Trading Cards
             </h2>
             <p style={{ color: '#888', marginBottom: '32px', maxWidth: '400px', margin: '0 auto 32px' }}>
               Connect your wallet to collect, trade, and auction NFT cards on the blockchain.

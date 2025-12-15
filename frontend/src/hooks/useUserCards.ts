@@ -15,16 +15,16 @@ interface CardMetadataResult {
 
 // Mock player data - in production this would come from IPFS or an API
 const mockPlayerData: Record<string, { name: string; position: string; team: string; rating: number }> = {
-  '1': { name: 'Lionel Messi', position: 'Forward', team: 'Inter Miami', rating: 93 },
-  '2': { name: 'Cristiano Ronaldo', position: 'Forward', team: 'Al Nassr', rating: 91 },
-  '3': { name: 'Kylian Mbappé', position: 'Forward', team: 'Real Madrid', rating: 92 },
-  '4': { name: 'Erling Haaland', position: 'Forward', team: 'Man City', rating: 91 },
-  '5': { name: 'Kevin De Bruyne', position: 'Midfielder', team: 'Man City', rating: 91 },
-  '6': { name: 'Jude Bellingham', position: 'Midfielder', team: 'Real Madrid', rating: 89 },
-  '7': { name: 'Vinícius Jr', position: 'Forward', team: 'Real Madrid', rating: 89 },
-  '8': { name: 'Rodri', position: 'Midfielder', team: 'Man City', rating: 89 },
-  '9': { name: 'Bukayo Saka', position: 'Forward', team: 'Arsenal', rating: 87 },
-  '10': { name: 'Phil Foden', position: 'Midfielder', team: 'Man City', rating: 87 },
+  '1': { name: 'Patrick Mahomes', position: 'QB', team: 'Kansas City Chiefs', rating: 99 },
+  '2': { name: 'Josh Allen', position: 'QB', team: 'Buffalo Bills', rating: 95 },
+  '3': { name: 'Lamar Jackson', position: 'QB', team: 'Baltimore Ravens', rating: 94 },
+  '4': { name: 'Aaron Donald', position: 'DT', team: 'Los Angeles Rams', rating: 98 },
+  '5': { name: 'Travis Kelce', position: 'TE', team: 'Kansas City Chiefs', rating: 97 },
+  '6': { name: 'Tyreek Hill', position: 'WR', team: 'Miami Dolphins', rating: 96 },
+  '7': { name: 'Christian McCaffrey', position: 'RB', team: 'San Francisco 49ers', rating: 95 },
+  '8': { name: 'Myles Garrett', position: 'DE', team: 'Cleveland Browns', rating: 96 },
+  '9': { name: 'Justin Jefferson', position: 'WR', team: 'Minnesota Vikings', rating: 97 },
+  '10': { name: 'T.J. Watt', position: 'OLB', team: 'Pittsburgh Steelers', rating: 95 },
 };
 
 function getPlayerData(playerId: string) {
@@ -87,8 +87,8 @@ export function useUserCards(): UseUserCardsResult {
         rarity: metadata.rarity as Rarity,
         imageUrl: '', // Would come from IPFS
         stats: {
-          goals: Math.floor(Math.random() * 30),
-          assists: Math.floor(Math.random() * 20),
+          touchdowns: Math.floor(Math.random() * 50),
+          passingYards: Math.floor(Math.random() * 5000),
           rating: playerData.rating,
         },
         owner: address,

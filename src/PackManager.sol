@@ -9,7 +9,7 @@ import "./CardNFT.sol";
 
 /**
  * @title PackManager
- * @notice Manages pack purchases, randomness, and card minting
+ * @notice Manages pack purchases, randomness, and NFL card minting
  * @dev Integrates with Chainlink VRF for randomness and CardNFT for minting
  */
 contract PackManager is AccessControl, ReentrancyGuard, VRFConsumerBaseV2Plus {

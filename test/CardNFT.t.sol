@@ -12,8 +12,8 @@ contract CardNFTTest is TestHelper {
     CardNFT public cardNFT;
     
     // Test constants
-    string constant NAME = "Fantasy Football Cards";
-    string constant SYMBOL = "FFC";
+    string constant NAME = "NFL Trading Cards";
+    string constant SYMBOL = "NFL";
     string constant BASE_URI = "ipfs://QmTest/";
     
     // Rarity levels
@@ -216,7 +216,7 @@ contract CardNFTTest is TestHelper {
     
     // ============ Token URI Tests ============
     
-    function test_TokenURI_ConstructsFromBaseURIAndPlayerId() public {
+    function test_TokenURI_ConstructsFromBaseURIAndPlayerIdAndRarity() public {
         // Grant minter role and mint card
         vm.prank(deployer);
         cardNFT.grantRole(cardNFT.MINTER_ROLE(), user1);
@@ -225,7 +225,8 @@ contract CardNFTTest is TestHelper {
         uint256 tokenId = cardNFT.mintCard(user2, PLAYER_1, COMMON);
         
         string memory uri = cardNFT.tokenURI(tokenId);
-        assertEq(uri, string(abi.encodePacked(BASE_URI, "1001.json")));
+        // Format: baseURI + playerId + "-" + rarity + ".json"
+        assertEq(uri, string(abi.encodePacked(BASE_URI, "1001-0.json")));
     }
     
     function test_TokenURI_RevertsForNonexistentToken() public {
@@ -254,9 +255,9 @@ contract CardNFTTest is TestHelper {
         vm.prank(user1);
         uint256 tokenId = cardNFT.mintCard(user2, PLAYER_1, COMMON);
         
-        // Check initial URI
+        // Check initial URI (format: baseURI + playerId + "-" + rarity + ".json")
         string memory uri1 = cardNFT.tokenURI(tokenId);
-        assertEq(uri1, string(abi.encodePacked(BASE_URI, "1001.json")));
+        assertEq(uri1, string(abi.encodePacked(BASE_URI, "1001-0.json")));
         
         // Update base URI
         vm.prank(deployer);
@@ -264,7 +265,7 @@ contract CardNFTTest is TestHelper {
         
         // Check updated URI
         string memory uri2 = cardNFT.tokenURI(tokenId);
-        assertEq(uri2, "ipfs://NewBase/1001.json");
+        assertEq(uri2, "ipfs://NewBase/1001-0.json");
     }
     
     // ============ Ownership Transfer Tests ============

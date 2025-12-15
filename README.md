@@ -1,6 +1,6 @@
 # Blockchain Trading Cards Platform
 
-A blockchain-based fantasy football trading card platform built on Ethereum using Foundry.
+A blockchain-based NFL trading card platform built on Ethereum using Foundry.
 
 ## Overview
 
