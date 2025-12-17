@@ -156,7 +156,9 @@ export function Collection({ onNavigateToStore }: CollectionProps) {
               <div
                 key={card.tokenId.toString()}
                 style={{
-                  background: `linear-gradient(135deg, ${rarity.bg}, #1a1a2e)`,
+                  background: card.imageUrl
+                    ? `url(${card.imageUrl}) center/cover no-repeat`
+                    : `linear-gradient(135deg, ${rarity.bg}, #1a1a2e)`,
                   borderRadius: '12px',
                   border: `2px solid ${isNew ? '#22c55e' : rarity.border}`,
                   boxShadow: isNew
@@ -166,6 +168,7 @@ export function Collection({ onNavigateToStore }: CollectionProps) {
                   position: 'relative',
                   transition: 'transform 0.2s, box-shadow 0.2s',
                   cursor: 'pointer',
+                  overflow: 'hidden',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
@@ -178,96 +181,133 @@ export function Collection({ onNavigateToStore }: CollectionProps) {
                     : `0 4px 12px ${rarity.glow}`;
                 }}
               >
-                {/* New Badge */}
-                {isNew && (
+                {/* Dark overlay for text readability when image is present */}
+                {card.imageUrl && (
                   <div
                     style={{
                       position: 'absolute',
-                      top: '-8px',
-                      right: '-8px',
-                      background: '#22c55e',
-                      color: '#000',
-                      padding: '2px 8px',
-                      borderRadius: '10px',
-                      fontSize: '10px',
-                      fontWeight: 700,
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%)',
+                      borderRadius: '12px',
                     }}
-                  >
-                    NEW
-                  </div>
+                  />
                 )}
 
-                {/* Rarity Badge */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    marginBottom: '8px',
-                  }}
-                >
-                  <span
-                    style={{
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      background: rarity.border,
-                      color: '#000',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {rarity.name}
-                  </span>
-                </div>
+                {/* Content overlay */}
+                <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  {/* New Badge */}
+                  {isNew && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        background: '#22c55e',
+                        color: '#000',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        zIndex: 2,
+                      }}
+                    >
+                      NEW
+                    </div>
+                  )}
 
-                {/* Player Image Placeholder */}
-                <div
-                  style={{
-                    height: '100px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '48px',
-                    marginBottom: '12px',
-                  }}
-                >
-                  ⚽
-                </div>
-
-                {/* Player Info */}
-                <div style={{ textAlign: 'center' }}>
+                  {/* Rarity Badge */}
                   <div
                     style={{
-                      color: '#fff',
-                      fontWeight: 700,
-                      fontSize: '14px',
-                      marginBottom: '4px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      marginBottom: '8px',
                     }}
                   >
-                    {card.playerName}
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: rarity.border,
+                        color: '#000',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {rarity.name}
+                    </span>
                   </div>
-                  <div style={{ color: '#aaa', fontSize: '12px', marginBottom: '2px' }}>
-                    {card.position}
-                  </div>
-                  <div style={{ color: '#888', fontSize: '11px' }}>{card.team}</div>
-                </div>
 
-                {/* Token ID */}
-                <div
-                  style={{
-                    marginTop: '10px',
-                    textAlign: 'center',
-                    padding: '4px',
-                    background: 'rgba(0,0,0,0.3)',
-                    borderRadius: '4px',
-                    fontSize: '10px',
-                    color: '#666',
-                  }}
-                >
-                  Token #{card.tokenId.toString()}
+                  {/* Player Image Placeholder (only if no image) */}
+                  {!card.imageUrl && (
+                    <div
+                      style={{
+                        height: '100px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '48px',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      ⚽
+                    </div>
+                  )}
+
+                  {/* Player Info */}
+                  <div style={{ textAlign: 'center', marginTop: card.imageUrl ? 'auto' : '0' }}>
+                    <div
+                      style={{
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        marginBottom: '4px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        textShadow: card.imageUrl ? '0 1px 3px rgba(0,0,0,0.8)' : 'none',
+                      }}
+                    >
+                      {card.playerName}
+                    </div>
+                    <div 
+                      style={{ 
+                        color: card.imageUrl ? '#fff' : '#aaa', 
+                        fontSize: '12px', 
+                        marginBottom: '2px',
+                        textShadow: card.imageUrl ? '0 1px 2px rgba(0,0,0,0.8)' : 'none',
+                      }}
+                    >
+                      {card.position}
+                    </div>
+                    <div 
+                      style={{ 
+                        color: card.imageUrl ? '#ddd' : '#888', 
+                        fontSize: '11px',
+                        textShadow: card.imageUrl ? '0 1px 2px rgba(0,0,0,0.8)' : 'none',
+                      }}
+                    >
+                      {card.team}
+                    </div>
+                  </div>
+
+                  {/* Token ID */}
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      textAlign: 'center',
+                      padding: '4px',
+                      background: card.imageUrl ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      color: card.imageUrl ? '#fff' : '#666',
+                    }}
+                  >
+                    Token #{card.tokenId.toString()}
+                  </div>
                 </div>
               </div>
             );

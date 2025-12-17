@@ -1,0 +1,36 @@
+{
+  "name": "Josh Allen - Common",
+  "description": "NFL Trading Card - Josh Allen (Common Rarity)",
+  "image": "https://violet-magnetic-mite-770.mypinata.cloud/ipfs/bafybeidpqmxn7rsgjksl2korydwdfjw6erqdld6jjdk34hr4qiqdgxld4a",
+  "external_url": "https://your-website.com/card/2/common",
+  "attributes": [
+    {
+      "trait_type": "Player",
+      "value": "Josh Allen"
+    },
+    {
+      "trait_type": "Position",
+      "value": "QB"
+    },
+    {
+      "trait_type": "Team",
+      "value": "Buffalo Bills"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common",
+      "display_type": "string"
+    },
+    {
+      "trait_type": "Player ID",
+      "value": "2",
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Rating",
+      "value": 95,
+      "display_type": "number",
+      "max_value": 100
+    }
+  ]
+}

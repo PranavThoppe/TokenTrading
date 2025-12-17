@@ -99,3 +99,106 @@ export function getAddressExplorerUrl(address: Address, chainId: number): string
   
   return '';
 }
+
+/**
+ * Get list of IPFS gateways to try (in order of preference)
+ */
+function getIPFSGateways(hash: string): string[] {
+  return [
+    // Custom Pinata gateway (best performance, no CORS issues)
+    `https://violet-magnetic-mite-770.mypinata.cloud/ipfs/${hash}`,
+    // Public Pinata gateway
+    `https://gateway.pinata.cloud/ipfs/${hash}`,
+    // Public IPFS gateway (fallback)
+    `https://ipfs.io/ipfs/${hash}`,
+  ];
+}
+
+/**
+ * Convert IPFS URI to HTTP gateway URLs (returns array for fallback)
+ * Supports ipfs://, https://ipfs.io, and Pinata gateways
+ */
+export function ipfsToHttp(ipfsUri: string): string[] {
+  if (!ipfsUri) return [];
+  
+  // If already HTTP, return as is
+  if (ipfsUri.startsWith('http://') || ipfsUri.startsWith('https://')) {
+    return [ipfsUri];
+  }
+  
+  // Convert ipfs:// to multiple gateway URLs for fallback
+  if (ipfsUri.startsWith('ipfs://')) {
+    const hash = ipfsUri.replace('ipfs://', '');
+    return getIPFSGateways(hash);
+  }
+  
+  return [];
+}
+
+/**
+ * Fetch metadata JSON from IPFS with gateway fallback and retry logic
+ */
+export async function fetchIPFSMetadata(uri: string, retries = 1): Promise<{ image?: string; [key: string]: any } | null> {
+  const gateways = ipfsToHttp(uri);
+  if (gateways.length === 0) return null;
+  
+  // Try each gateway with retries
+  for (const gatewayUrl of gateways) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        // Add delay between retries to avoid rate limiting
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+        
+        // Add timeout to prevent long waits
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(gatewayUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const metadata = await response.json();
+          return metadata;
+        }
+        
+        // If 404 (not found), file doesn't exist - stop trying
+        if (response.status === 404) {
+          return null; // File doesn't exist, no point trying other gateways
+        }
+        
+        // If 429 (rate limit), wait longer before retry
+        if (response.status === 429) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
+          continue;
+        }
+        
+        // For other errors, try next gateway
+        break;
+      } catch (error) {
+        // If timeout or network error, try next gateway immediately
+        if (error instanceof Error && error.name === 'AbortError') {
+          break; // Timeout - try next gateway
+        }
+        
+        // If this is the last attempt on this gateway, try next gateway
+        if (attempt === retries) {
+          break;
+        }
+        // Otherwise retry this gateway
+        continue;
+      }
+    }
+  }
+  
+  // All gateways failed - file likely doesn't exist
+  return null;
+}

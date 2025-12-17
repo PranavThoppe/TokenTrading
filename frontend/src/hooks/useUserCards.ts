@@ -5,6 +5,7 @@ import { CARD_NFT_ADDRESS } from '@/lib/contracts';
 import { useCollectionStore } from '@/store/collectionStore';
 import type { Card, Rarity } from '@/types/contracts';
 import type { Address } from 'viem';
+import { fetchIPFSMetadata, ipfsToHttp } from '@/utils/contractHelpers';
 
 interface CardMetadataResult {
   playerId: bigint;
@@ -57,6 +58,30 @@ export function useUserCards(): UseUserCardsResult {
     if (!publicClient || !address) return null;
 
     try {
+      // First verify ownership - if not owned, skip immediately
+      let owner: Address;
+      try {
+        owner = await publicClient.readContract({
+          address: CARD_NFT_ADDRESS,
+          abi: CARD_NFT_ABI,
+          functionName: 'ownerOf',
+          args: [tokenId],
+        }) as Address;
+      } catch (ownerError: any) {
+        // Token might not exist or have been burned
+        if (ownerError.message?.includes('nonexistent token') || ownerError.message?.includes('does not exist')) {
+          console.warn(`[useUserCards] Token ${tokenId.toString()} does not exist`);
+          return null;
+        }
+        throw ownerError;
+      }
+
+      if (owner.toLowerCase() !== address.toLowerCase()) {
+        console.warn(`[useUserCards] Token ${tokenId.toString()} is not owned by user (owner: ${owner})`);
+        return null;
+      }
+
+      // Fetch metadata
       const metadata = await publicClient.readContract({
         address: CARD_NFT_ADDRESS,
         abi: CARD_NFT_ABI,
@@ -64,28 +89,59 @@ export function useUserCards(): UseUserCardsResult {
         args: [tokenId],
       }) as CardMetadataResult;
 
-      // Verify ownership
-      const owner = await publicClient.readContract({
-        address: CARD_NFT_ADDRESS,
-        abi: CARD_NFT_ABI,
-        functionName: 'ownerOf',
-        args: [tokenId],
-      }) as Address;
+      // Fetch tokenURI to get metadata JSON location
+      let imageUrl = '';
+      try {
+        const tokenURI = await publicClient.readContract({
+          address: CARD_NFT_ADDRESS,
+          abi: CARD_NFT_ABI,
+          functionName: 'tokenURI',
+          args: [tokenId],
+        }) as string;
 
-      if (owner.toLowerCase() !== address.toLowerCase()) {
-        return null;
+        console.log(`[useUserCards] Token ${tokenId.toString()} tokenURI:`, tokenURI);
+
+        if (tokenURI) {
+          const ipfsMetadata = await fetchIPFSMetadata(tokenURI);
+          console.log(`[useUserCards] Token ${tokenId.toString()} IPFS metadata:`, ipfsMetadata);
+          
+          if (ipfsMetadata?.image) {
+            imageUrl = ipfsMetadata.image;
+            console.log(`[useUserCards] Token ${tokenId.toString()} image from metadata:`, imageUrl);
+            
+            // Convert ipfs:// to HTTP if needed (use first gateway)
+            // If already HTTP, use as-is
+            if (imageUrl.startsWith('ipfs://')) {
+              const gateways = ipfsToHttp(imageUrl);
+              imageUrl = gateways[0] || imageUrl;
+              console.log(`[useUserCards] Token ${tokenId.toString()} converted image URL:`, imageUrl);
+            } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+              // Already HTTP, use as-is
+              console.log(`[useUserCards] Token ${tokenId.toString()} image URL is already HTTP:`, imageUrl);
+            } else {
+              console.warn(`[useUserCards] Token ${tokenId.toString()} image URL has unexpected format:`, imageUrl);
+            }
+          } else {
+            console.warn(`[useUserCards] Token ${tokenId.toString()} metadata has no image field. Metadata keys:`, ipfsMetadata ? Object.keys(ipfsMetadata) : 'null');
+          }
+        } else {
+          console.warn(`[useUserCards] Token ${tokenId.toString()} has no tokenURI`);
+        }
+      } catch (err) {
+        console.error(`[useUserCards] Failed to fetch image for token ${tokenId.toString()}:`, err);
+        // Continue without image - will show placeholder
       }
 
       const playerData = getPlayerData(metadata.playerId.toString());
 
-      return {
+      const card = {
         tokenId,
         playerId: metadata.playerId.toString(),
         playerName: playerData.name,
         position: playerData.position,
         team: playerData.team,
         rarity: metadata.rarity as Rarity,
-        imageUrl: '', // Would come from IPFS
+        imageUrl, // Now contains the image URL or empty string
         stats: {
           touchdowns: Math.floor(Math.random() * 50),
           passingYards: Math.floor(Math.random() * 5000),
@@ -95,8 +151,21 @@ export function useUserCards(): UseUserCardsResult {
         mintTimestamp: Number(metadata.mintTimestamp),
         metadataUri: metadata.metadataURI,
       };
+
+      // Log final card data for debugging
+      if (tokenId.toString() === '2' || tokenId.toString() === '13') {
+        console.log(`[useUserCards] Final card data for token ${tokenId.toString()}:`, {
+          tokenId: card.tokenId.toString(),
+          playerId: card.playerId,
+          playerName: card.playerName,
+          imageUrl: card.imageUrl,
+          metadataUri: card.metadataUri,
+        });
+      }
+
+      return card;
     } catch (err) {
-      console.error('Error fetching card metadata:', err);
+      console.error(`[useUserCards] Error fetching card metadata for token ${tokenId.toString()}:`, err);
       return null;
     }
   }, [publicClient, address]);
@@ -115,8 +184,17 @@ export function useUserCards(): UseUserCardsResult {
         await delay(delayMs);
       }
 
-      const cardPromises = ids.map(id => fetchCardMetadata(id));
-      const results = await Promise.all(cardPromises);
+      // Fetch cards with small delay between each to avoid rate limiting
+      const results: (Card | null)[] = [];
+      for (let i = 0; i < ids.length; i++) {
+        const result = await fetchCardMetadata(ids[i]);
+        results.push(result);
+        // Small delay between fetches to avoid rate limiting (except for last one)
+        if (i < ids.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
       const validCards = results.filter((card): card is Card => card !== null);
 
       // If we got all cards, return them
@@ -133,9 +211,16 @@ export function useUserCards(): UseUserCardsResult {
       }
     }
 
-    // Final attempt - return whatever we got
-    const cardPromises = ids.map(id => fetchCardMetadata(id));
-    const results = await Promise.all(cardPromises);
+    // Final attempt - return whatever we got (with delays)
+    const results: (Card | null)[] = [];
+    for (let i = 0; i < ids.length; i++) {
+      const result = await fetchCardMetadata(ids[i]);
+      results.push(result);
+      // Small delay between fetches to avoid rate limiting (except for last one)
+      if (i < ids.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
     return results.filter((card): card is Card => card !== null);
   }, [publicClient, address, fetchCardMetadata]);
 
@@ -150,49 +235,141 @@ export function useUserCards(): UseUserCardsResult {
     setError(null);
 
     try {
-      // Get current block and limit range to 9000 blocks (under free tier limit)
+      // First, get the user's balance to verify we got all tokens
+      const balance = await publicClient.readContract({
+        address: CARD_NFT_ADDRESS,
+        abi: CARD_NFT_ABI,
+        functionName: 'balanceOf',
+        args: [address],
+      }) as bigint;
+
+      console.log(`[useUserCards] User balance: ${balance.toString()}`);
+
+      // Try to fetch from block 0 first (all history)
+      // If that fails due to RPC limits, fall back to a larger range
+      let fromBlock = 0n;
+      let receivedLogs: any[] = [];
+      let sentLogs: any[] = [];
+
+      // RPC providers often limit block ranges (e.g., 10,000 blocks on free tier)
+      // Use pagination to fetch all events in chunks
+      const MAX_BLOCK_RANGE = 9000n; // Stay under 10k limit
       const currentBlock = await publicClient.getBlockNumber();
-      const fromBlock = currentBlock > 9000n ? currentBlock - 9000n : 0n;
+      
+      // Start from the most recent blocks and work backwards
+      let toBlock = currentBlock;
+      let allReceivedLogs: any[] = [];
+      let allSentLogs: any[] = [];
+      let hasMoreBlocks = true;
+      let iterations = 0;
+      let consecutiveEmptyBlocks = 0;
+      const MAX_ITERATIONS = 100; // Safety limit to prevent infinite loops
+      const MAX_CONSECUTIVE_EMPTY = 5; // Stop after 5 consecutive empty blocks
 
+      console.log(`[useUserCards] Starting paginated fetch from block ${currentBlock.toString()}...`);
 
+      while (hasMoreBlocks && iterations < MAX_ITERATIONS) {
+        iterations++;
+        fromBlock = toBlock > MAX_BLOCK_RANGE ? toBlock - MAX_BLOCK_RANGE : 0n;
+        
+        try {
+          const [batchReceived, batchSent] = await Promise.all([
+            publicClient.getLogs({
+              address: CARD_NFT_ADDRESS,
+              event: {
+                type: 'event',
+                name: 'Transfer',
+                inputs: [
+                  { name: 'from', type: 'address', indexed: true },
+                  { name: 'to', type: 'address', indexed: true },
+                  { name: 'tokenId', type: 'uint256', indexed: true },
+                ],
+              },
+              args: {
+                to: address,
+              },
+              fromBlock,
+              toBlock: toBlock === currentBlock ? 'latest' : toBlock,
+            }),
+            publicClient.getLogs({
+              address: CARD_NFT_ADDRESS,
+              event: {
+                type: 'event',
+                name: 'Transfer',
+                inputs: [
+                  { name: 'from', type: 'address', indexed: true },
+                  { name: 'to', type: 'address', indexed: true },
+                  { name: 'tokenId', type: 'uint256', indexed: true },
+                ],
+              },
+              args: {
+                from: address,
+              },
+              fromBlock,
+              toBlock: toBlock === currentBlock ? 'latest' : toBlock,
+            }),
+          ]);
 
-      // Get Transfer events where user received tokens
-      const receivedLogs = await publicClient.getLogs({
-        address: CARD_NFT_ADDRESS,
-        event: {
-          type: 'event',
-          name: 'Transfer',
-          inputs: [
-            { name: 'from', type: 'address', indexed: true },
-            { name: 'to', type: 'address', indexed: true },
-            { name: 'tokenId', type: 'uint256', indexed: true },
-          ],
-        },
-        args: {
-          to: address,
-        },
-        fromBlock,
-        toBlock: 'latest',
-      });
+          const hasEvents = batchReceived.length > 0 || batchSent.length > 0;
+          
+          if (hasEvents) {
+            consecutiveEmptyBlocks = 0; // Reset counter when we find events
+            allReceivedLogs.push(...batchReceived);
+            allSentLogs.push(...batchSent);
+            console.log(`[useUserCards] Fetched blocks ${fromBlock.toString()} to ${toBlock.toString()}: ${batchReceived.length} received, ${batchSent.length} sent`);
+          } else {
+            consecutiveEmptyBlocks++;
+            if (consecutiveEmptyBlocks >= MAX_CONSECUTIVE_EMPTY) {
+              console.log(`[useUserCards] Stopping early: ${consecutiveEmptyBlocks} consecutive empty blocks. Found ${allReceivedLogs.length} received, ${allSentLogs.length} sent events.`);
+              hasMoreBlocks = false;
+              break;
+            }
+          }
 
-      // Get Transfer events where user sent tokens
-      const sentLogs = await publicClient.getLogs({
-        address: CARD_NFT_ADDRESS,
-        event: {
-          type: 'event',
-          name: 'Transfer',
-          inputs: [
-            { name: 'from', type: 'address', indexed: true },
-            { name: 'to', type: 'address', indexed: true },
-            { name: 'tokenId', type: 'uint256', indexed: true },
-          ],
-        },
-        args: {
-          from: address,
-        },
-        fromBlock,
-        toBlock: 'latest',
-      });
+          // Move to next chunk (going backwards)
+          if (fromBlock === 0n) {
+            hasMoreBlocks = false;
+          } else {
+            toBlock = fromBlock - 1n;
+          }
+        } catch (error: any) {
+          // Check if it's a block range limit error
+          const isRangeError = error.message?.includes('ranges over') || error.message?.includes('not supported');
+          
+          if (isRangeError && toBlock - fromBlock > 1000n) {
+            // Try a smaller chunk if we hit a range limit
+            console.warn(`[useUserCards] Block range too large, trying smaller chunk from ${fromBlock.toString()} to ${toBlock.toString()}`);
+            const chunkSize = (toBlock - fromBlock) / 2n;
+            toBlock = fromBlock + chunkSize;
+            // Don't increment iterations since we're retrying the same range
+            iterations--;
+            continue;
+          }
+          
+          console.warn(`[useUserCards] Error fetching blocks ${fromBlock.toString()} to ${toBlock.toString()}:`, error.message);
+          
+          // If we're at block 0 or very close, stop
+          if (fromBlock === 0n || toBlock - fromBlock <= 100n) {
+            hasMoreBlocks = false;
+          } else {
+            // Move to next chunk anyway - don't let one error stop the whole process
+            // Just reduce the chunk size
+            const chunkSize = toBlock - fromBlock;
+            if (chunkSize > 1000n) {
+              toBlock = fromBlock + chunkSize / 2n;
+              iterations--; // Retry with smaller chunk
+              continue;
+            } else {
+              // Very small chunk failed, move on
+              toBlock = fromBlock - 1n;
+            }
+          }
+        }
+      }
+
+      receivedLogs = allReceivedLogs;
+      sentLogs = allSentLogs;
+      console.log(`[useUserCards] Total fetched: ${receivedLogs.length} received, ${sentLogs.length} sent across ${iterations} iterations`);
 
       // Calculate owned tokens
       const receivedIds = new Set(receivedLogs.map(log => (log.args.tokenId as bigint).toString()));
@@ -200,9 +377,27 @@ export function useUserCards(): UseUserCardsResult {
       
       const ownedIds = [...receivedIds].filter(id => !sentIds.has(id)).map(id => BigInt(id));
 
-      // Fetch metadata for all owned tokens
+      console.log(`[useUserCards] Calculated owned tokens: ${ownedIds.length} (balance: ${balance.toString()})`);
+
+      // Verify we got all tokens (balance should match)
+      if (BigInt(ownedIds.length) !== balance) {
+        const missingCount = balance - BigInt(ownedIds.length);
+        console.warn(
+          `[useUserCards] Mismatch: Found ${ownedIds.length} tokens via events, but balanceOf returns ${balance.toString()}. ` +
+          `Missing ${missingCount.toString()} token(s). Some tokens may have been minted/transferred before the queried block range ` +
+          `(${fromBlock === 0n ? 'reached block 0' : `stopped at block ${fromBlock.toString()}`}).`
+        );
+      }
+
+      // Fetch metadata for all owned tokens with small delay to avoid rate limiting
       const fetchedCards = await fetchCardsByIds(ownedIds);
-      setCards(fetchedCards);
+      
+      // Final verification: filter out any cards that don't actually belong to the user
+      // (in case of edge cases with event filtering)
+      const verifiedCards = fetchedCards.filter(card => card !== null);
+      
+      console.log(`[useUserCards] Successfully fetched ${verifiedCards.length} cards`);
+      setCards(verifiedCards);
     } catch (err) {
       console.error('Error fetching user cards:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch cards'));

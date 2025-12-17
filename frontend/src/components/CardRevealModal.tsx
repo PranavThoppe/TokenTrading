@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Card } from '@/types/contracts';
 
 interface CardRevealModalProps {
