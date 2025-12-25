@@ -45,103 +45,106 @@ interface UseUserCardsResult {
   fetchCardsByIds: (tokenIds: bigint[]) => Promise<Card[]>;
 }
 
+// Batch size for parallel fetching (adjust based on RPC limits)
+const BATCH_SIZE = 10;
+
 /**
  * Hook to fetch and manage user's card collection
  */
 export function useUserCards(): UseUserCardsResult {
   const { address } = useAccount();
   const publicClient = usePublicClient();
-  const { cards, setCards, setLoading, setError, isLoading, error } = useCollectionStore();
+  const { 
+    cards, 
+    setCards, 
+    setLoading, 
+    setError, 
+    isLoading, 
+    error, 
+    lastScannedBlock, 
+    setLastScannedBlock,
+    loadFromCache,
+    saveToCache,
+  } = useCollectionStore();
 
-  // Fetch card metadata for a single token
+  // Fetch card metadata for a single token (optimized with batched contract calls)
   const fetchCardMetadata = useCallback(async (tokenId: bigint): Promise<Card | null> => {
     if (!publicClient || !address) return null;
 
     try {
-      // First verify ownership - if not owned, skip immediately
-      let owner: Address;
-      try {
-        owner = await publicClient.readContract({
+      // Batch all contract calls for this token in parallel
+      const [ownerResult, metadataResult, tokenURIResult] = await Promise.allSettled([
+        publicClient.readContract({
           address: CARD_NFT_ADDRESS,
           abi: CARD_NFT_ABI,
           functionName: 'ownerOf',
           args: [tokenId],
-        }) as Address;
-      } catch (ownerError: any) {
-        // Token might not exist or have been burned
-        if (ownerError.message?.includes('nonexistent token') || ownerError.message?.includes('does not exist')) {
-          console.warn(`[useUserCards] Token ${tokenId.toString()} does not exist`);
-          return null;
-        }
-        throw ownerError;
-      }
-
-      if (owner.toLowerCase() !== address.toLowerCase()) {
-        console.warn(`[useUserCards] Token ${tokenId.toString()} is not owned by user (owner: ${owner})`);
-        return null;
-      }
-
-      // Fetch metadata
-      const metadata = await publicClient.readContract({
-        address: CARD_NFT_ADDRESS,
-        abi: CARD_NFT_ABI,
-        functionName: 'getCardMetadata',
-        args: [tokenId],
-      }) as CardMetadataResult;
-
-      // Fetch tokenURI to get metadata JSON location
-      let imageUrl = '';
-      try {
-        const tokenURI = await publicClient.readContract({
+        }),
+        publicClient.readContract({
+          address: CARD_NFT_ADDRESS,
+          abi: CARD_NFT_ABI,
+          functionName: 'getCardMetadata',
+          args: [tokenId],
+        }),
+        publicClient.readContract({
           address: CARD_NFT_ADDRESS,
           abi: CARD_NFT_ABI,
           functionName: 'tokenURI',
           args: [tokenId],
-        }) as string;
+        }),
+      ]);
 
-        console.log(`[useUserCards] Token ${tokenId.toString()} tokenURI:`, tokenURI);
-
-        if (tokenURI) {
-          const ipfsMetadata = await fetchIPFSMetadata(tokenURI);
-          console.log(`[useUserCards] Token ${tokenId.toString()} IPFS metadata:`, ipfsMetadata);
-          
-          if (ipfsMetadata?.image) {
-            imageUrl = ipfsMetadata.image;
-            console.log(`[useUserCards] Token ${tokenId.toString()} image from metadata:`, imageUrl);
-            
-            // Convert ipfs:// to HTTP if needed (use first gateway)
-            // If already HTTP, use as-is
-            if (imageUrl.startsWith('ipfs://')) {
-              const gateways = ipfsToHttp(imageUrl);
-              imageUrl = gateways[0] || imageUrl;
-              console.log(`[useUserCards] Token ${tokenId.toString()} converted image URL:`, imageUrl);
-            } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              // Already HTTP, use as-is
-              console.log(`[useUserCards] Token ${tokenId.toString()} image URL is already HTTP:`, imageUrl);
-            } else {
-              console.warn(`[useUserCards] Token ${tokenId.toString()} image URL has unexpected format:`, imageUrl);
-            }
-          } else {
-            console.warn(`[useUserCards] Token ${tokenId.toString()} metadata has no image field. Metadata keys:`, ipfsMetadata ? Object.keys(ipfsMetadata) : 'null');
-          }
-        } else {
-          console.warn(`[useUserCards] Token ${tokenId.toString()} has no tokenURI`);
+      // Check ownership first
+      if (ownerResult.status === 'rejected') {
+        const error = ownerResult.reason as any;
+        if (error.message?.includes('nonexistent token') || error.message?.includes('does not exist')) {
+          return null;
         }
-      } catch (err) {
-        console.error(`[useUserCards] Failed to fetch image for token ${tokenId.toString()}:`, err);
-        // Continue without image - will show placeholder
+        throw error;
+      }
+
+      const owner = ownerResult.value as Address;
+      if (owner.toLowerCase() !== address.toLowerCase()) {
+        return null;
+      }
+
+      // Get metadata
+      if (metadataResult.status === 'rejected') {
+        throw metadataResult.reason;
+      }
+      const metadata = metadataResult.value as CardMetadataResult;
+
+      // Fetch image URL if tokenURI is available
+      let imageUrl = '';
+      if (tokenURIResult.status === 'fulfilled' && tokenURIResult.value) {
+        try {
+          const tokenURI = tokenURIResult.value as string;
+          if (tokenURI) {
+            const ipfsMetadata = await fetchIPFSMetadata(tokenURI);
+            if (ipfsMetadata?.image) {
+              imageUrl = ipfsMetadata.image;
+              if (imageUrl.startsWith('ipfs://')) {
+                const gateways = ipfsToHttp(imageUrl);
+                imageUrl = gateways[0] || imageUrl;
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`[useUserCards] Failed to fetch image for token ${tokenId.toString()}:`, err);
+          // Continue without image
+        }
       }
 
       const playerData = getPlayerData(metadata.playerId.toString());
 
-      const card = {
+      return {
         tokenId,
         playerId: metadata.playerId.toString(),
         playerName: playerData.name,
         position: playerData.position,
         team: playerData.team,
         rarity: metadata.rarity as Rarity,
-        imageUrl, // Now contains the image URL or empty string
+        imageUrl,
         stats: {
           touchdowns: Math.floor(Math.random() * 50),
           passingYards: Math.floor(Math.random() * 5000),
@@ -151,91 +154,55 @@ export function useUserCards(): UseUserCardsResult {
         mintTimestamp: Number(metadata.mintTimestamp),
         metadataUri: metadata.metadataURI,
       };
-
-      // Log final card data for debugging
-      if (tokenId.toString() === '2' || tokenId.toString() === '13') {
-        console.log(`[useUserCards] Final card data for token ${tokenId.toString()}:`, {
-          tokenId: card.tokenId.toString(),
-          playerId: card.playerId,
-          playerName: card.playerName,
-          imageUrl: card.imageUrl,
-          metadataUri: card.metadataUri,
-        });
-      }
-
-      return card;
     } catch (err) {
       console.error(`[useUserCards] Error fetching card metadata for token ${tokenId.toString()}:`, err);
       return null;
     }
   }, [publicClient, address]);
 
-  // Fetch cards by specific token IDs with retry logic
-  const fetchCardsByIds = useCallback(async (ids: bigint[], retries = 3, delayMs = 2000): Promise<Card[]> => {
+  // Fetch cards by specific token IDs in parallel batches (REMOVED DELAYS)
+  const fetchCardsByIds = useCallback(async (ids: bigint[]): Promise<Card[]> => {
     if (!publicClient || !address || ids.length === 0) return [];
 
-    // Helper to delay
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-    // Try fetching with retries
-    for (let attempt = 0; attempt < retries; attempt++) {
-      if (attempt > 0) {
-        console.log(`[useUserCards] Retry attempt ${attempt + 1}/${retries} after ${delayMs}ms delay...`);
-        await delay(delayMs);
-      }
-
-      // Fetch cards with small delay between each to avoid rate limiting
-      const results: (Card | null)[] = [];
-      for (let i = 0; i < ids.length; i++) {
-        const result = await fetchCardMetadata(ids[i]);
-        results.push(result);
-        // Small delay between fetches to avoid rate limiting (except for last one)
-        if (i < ids.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      }
+    // Process in batches to avoid overwhelming the RPC
+    const results: Card[] = [];
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const batch = ids.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(id => fetchCardMetadata(id))
+      );
+      results.push(...batchResults.filter((card): card is Card => card !== null));
       
-      const validCards = results.filter((card): card is Card => card !== null);
-
-      // If we got all cards, return them
-      if (validCards.length === ids.length) {
-        console.log(`[useUserCards] Successfully fetched all ${validCards.length} cards`);
-        return validCards;
-      }
-
-      // If we got some cards, log which ones are missing
-      if (validCards.length > 0) {
-        const foundIds = new Set(validCards.map(c => c.tokenId.toString()));
-        const missingIds = ids.filter(id => !foundIds.has(id.toString()));
-        console.log(`[useUserCards] Got ${validCards.length}/${ids.length} cards. Missing: ${missingIds.map(id => id.toString()).join(', ')}`);
+      // Small delay between batches only (reduced from 200ms to 50ms)
+      if (i + BATCH_SIZE < ids.length) {
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
 
-    // Final attempt - return whatever we got (with delays)
-    const results: (Card | null)[] = [];
-    for (let i = 0; i < ids.length; i++) {
-      const result = await fetchCardMetadata(ids[i]);
-      results.push(result);
-      // Small delay between fetches to avoid rate limiting (except for last one)
-      if (i < ids.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-    }
-    return results.filter((card): card is Card => card !== null);
+    return results;
   }, [publicClient, address, fetchCardMetadata]);
 
   // Fetch all user's cards by scanning Transfer events
-  const fetchUserCards = useCallback(async () => {
+  const fetchUserCards = useCallback(async (forceRefresh = false) => {
     if (!address || !publicClient) {
       setCards([]);
       return;
+    }
+
+    // Load cached cards immediately if available and not forcing refresh
+    if (!forceRefresh) {
+      const cached = loadFromCache(address);
+      if (cached && cards.length > 0) {
+        console.log(`[useUserCards] Loaded ${cards.length} cards from cache, refreshing in background...`);
+        // Don't set loading to true immediately - show cached data first
+      }
     }
 
     setLoading(true);
     setError(null);
 
     try {
-      // First, get the user's balance to verify we got all tokens
+      // Get user's balance
       const balance = await publicClient.readContract({
         address: CARD_NFT_ADDRESS,
         abi: CARD_NFT_ABI,
@@ -245,32 +212,45 @@ export function useUserCards(): UseUserCardsResult {
 
       console.log(`[useUserCards] User balance: ${balance.toString()}`);
 
-      // Try to fetch from block 0 first (all history)
-      // If that fails due to RPC limits, fall back to a larger range
-      let fromBlock = 0n;
-      let receivedLogs: any[] = [];
-      let sentLogs: any[] = [];
+      // If balance is 0, clear cards and return
+      if (balance === 0n) {
+        setCards([]);
+        setLastScannedBlock(null);
+        if (address) saveToCache(address);
+        return;
+      }
 
-      // RPC providers often limit block ranges (e.g., 10,000 blocks on free tier)
-      // Use pagination to fetch all events in chunks
-      const MAX_BLOCK_RANGE = 9000n; // Stay under 10k limit
+      const MAX_BLOCK_RANGE = 9000n;
       const currentBlock = await publicClient.getBlockNumber();
       
-      // Start from the most recent blocks and work backwards
+      // Start from cached block if available, otherwise from current block
       let toBlock = currentBlock;
+      let startFromBlock = 0n;
+      if (!forceRefresh && lastScannedBlock && lastScannedBlock > 0n) {
+        // Only scan new blocks since last scan
+        const blocksSinceLastScan = currentBlock - lastScannedBlock;
+        if (blocksSinceLastScan < MAX_BLOCK_RANGE && blocksSinceLastScan > 0n) {
+          startFromBlock = lastScannedBlock;
+          console.log(`[useUserCards] Resuming from cached block ${lastScannedBlock.toString()}, scanning ${blocksSinceLastScan.toString()} new blocks`);
+        }
+      }
+
       let allReceivedLogs: any[] = [];
       let allSentLogs: any[] = [];
       let hasMoreBlocks = true;
       let iterations = 0;
       let consecutiveEmptyBlocks = 0;
-      const MAX_ITERATIONS = 100; // Safety limit to prevent infinite loops
-      const MAX_CONSECUTIVE_EMPTY = 5; // Stop after 5 consecutive empty blocks
+      const MAX_ITERATIONS = 200;
+      const MAX_CONSECUTIVE_EMPTY = 10;
 
-      console.log(`[useUserCards] Starting paginated fetch from block ${currentBlock.toString()}...`);
+      // If we have cached cards and are only scanning new blocks, we need to merge with existing
+      const existingTokenIds = new Set(cards.map(c => c.tokenId.toString()));
+
+      console.log(`[useUserCards] Starting paginated fetch from block ${startFromBlock.toString()} to ${toBlock.toString()}...`);
 
       while (hasMoreBlocks && iterations < MAX_ITERATIONS) {
         iterations++;
-        fromBlock = toBlock > MAX_BLOCK_RANGE ? toBlock - MAX_BLOCK_RANGE : 0n;
+        const fromBlock = toBlock > MAX_BLOCK_RANGE ? toBlock - MAX_BLOCK_RANGE : startFromBlock;
         
         try {
           const [batchReceived, batchSent] = await Promise.all([
@@ -313,103 +293,155 @@ export function useUserCards(): UseUserCardsResult {
           const hasEvents = batchReceived.length > 0 || batchSent.length > 0;
           
           if (hasEvents) {
-            consecutiveEmptyBlocks = 0; // Reset counter when we find events
+            consecutiveEmptyBlocks = 0;
             allReceivedLogs.push(...batchReceived);
             allSentLogs.push(...batchSent);
             console.log(`[useUserCards] Fetched blocks ${fromBlock.toString()} to ${toBlock.toString()}: ${batchReceived.length} received, ${batchSent.length} sent`);
           } else {
             consecutiveEmptyBlocks++;
-            if (consecutiveEmptyBlocks >= MAX_CONSECUTIVE_EMPTY) {
-              console.log(`[useUserCards] Stopping early: ${consecutiveEmptyBlocks} consecutive empty blocks. Found ${allReceivedLogs.length} received, ${allSentLogs.length} sent events.`);
+            if (consecutiveEmptyBlocks >= MAX_CONSECUTIVE_EMPTY && (allReceivedLogs.length > 0 || allSentLogs.length > 0)) {
+              console.log(`[useUserCards] Stopping early: ${consecutiveEmptyBlocks} consecutive empty blocks`);
               hasMoreBlocks = false;
               break;
             }
           }
 
-          // Move to next chunk (going backwards)
-          if (fromBlock === 0n) {
+          if (fromBlock === startFromBlock || fromBlock === 0n) {
             hasMoreBlocks = false;
           } else {
             toBlock = fromBlock - 1n;
           }
         } catch (error: any) {
-          // Check if it's a block range limit error
           const isRangeError = error.message?.includes('ranges over') || error.message?.includes('not supported');
           
           if (isRangeError && toBlock - fromBlock > 1000n) {
-            // Try a smaller chunk if we hit a range limit
-            console.warn(`[useUserCards] Block range too large, trying smaller chunk from ${fromBlock.toString()} to ${toBlock.toString()}`);
             const chunkSize = (toBlock - fromBlock) / 2n;
             toBlock = fromBlock + chunkSize;
-            // Don't increment iterations since we're retrying the same range
             iterations--;
             continue;
           }
           
           console.warn(`[useUserCards] Error fetching blocks ${fromBlock.toString()} to ${toBlock.toString()}:`, error.message);
           
-          // If we're at block 0 or very close, stop
-          if (fromBlock === 0n || toBlock - fromBlock <= 100n) {
+          if (fromBlock === startFromBlock || fromBlock === 0n || toBlock - fromBlock <= 100n) {
             hasMoreBlocks = false;
           } else {
-            // Move to next chunk anyway - don't let one error stop the whole process
-            // Just reduce the chunk size
             const chunkSize = toBlock - fromBlock;
             if (chunkSize > 1000n) {
               toBlock = fromBlock + chunkSize / 2n;
-              iterations--; // Retry with smaller chunk
+              iterations--;
               continue;
             } else {
-              // Very small chunk failed, move on
               toBlock = fromBlock - 1n;
             }
           }
         }
       }
 
-      receivedLogs = allReceivedLogs;
-      sentLogs = allSentLogs;
-      console.log(`[useUserCards] Total fetched: ${receivedLogs.length} received, ${sentLogs.length} sent across ${iterations} iterations`);
+      console.log(`[useUserCards] Total fetched: ${allReceivedLogs.length} received, ${allSentLogs.length} sent`);
 
       // Calculate owned tokens
-      const receivedIds = new Set(receivedLogs.map(log => (log.args.tokenId as bigint).toString()));
-      const sentIds = new Set(sentLogs.map(log => (log.args.tokenId as bigint).toString()));
+      const receivedIds = new Set(allReceivedLogs.map(log => (log.args.tokenId as bigint).toString()));
+      const sentIds = new Set(allSentLogs.map(log => (log.args.tokenId as bigint).toString()));
       
-      const ownedIds = [...receivedIds].filter(id => !sentIds.has(id)).map(id => BigInt(id));
+      let ownedIds = [...receivedIds].filter(id => !sentIds.has(id)).map(id => BigInt(id));
+
+      // If we have cached cards, merge the token IDs
+      if (!forceRefresh && existingTokenIds.size > 0) {
+        const cachedIds = Array.from(existingTokenIds).map(id => BigInt(id));
+        const newIds = ownedIds.filter(id => !existingTokenIds.has(id.toString()));
+        console.log(`[useUserCards] Found ${newIds.length} new tokens since last scan`);
+        ownedIds = [...cachedIds, ...newIds];
+      }
 
       console.log(`[useUserCards] Calculated owned tokens: ${ownedIds.length} (balance: ${balance.toString()})`);
 
-      // Verify we got all tokens (balance should match)
-      if (BigInt(ownedIds.length) !== balance) {
+      // Handle missing tokens if balance doesn't match
+      if (BigInt(ownedIds.length) !== balance && balance - BigInt(ownedIds.length) <= 20n) {
         const missingCount = balance - BigInt(ownedIds.length);
-        console.warn(
-          `[useUserCards] Mismatch: Found ${ownedIds.length} tokens via events, but balanceOf returns ${balance.toString()}. ` +
-          `Missing ${missingCount.toString()} token(s). Some tokens may have been minted/transferred before the queried block range ` +
-          `(${fromBlock === 0n ? 'reached block 0' : `stopped at block ${fromBlock.toString()}`}).`
-        );
+        console.log(`[useUserCards] Attempting to find ${missingCount.toString()} missing token(s)...`);
+        
+        const allSeenTokenIds = new Set<string>();
+        allReceivedLogs.forEach(log => allSeenTokenIds.add((log.args.tokenId as bigint).toString()));
+        allSentLogs.forEach(log => allSeenTokenIds.add((log.args.tokenId as bigint).toString()));
+        
+        const missingTokens: bigint[] = [];
+        const checkPromises = Array.from(allSeenTokenIds)
+          .filter(id => !ownedIds.some(oid => oid.toString() === id))
+          .slice(0, Number(missingCount))
+          .map(async (tokenIdStr) => {
+            try {
+              const owner = await publicClient.readContract({
+                address: CARD_NFT_ADDRESS,
+                abi: CARD_NFT_ABI,
+                functionName: 'ownerOf',
+                args: [BigInt(tokenIdStr)],
+              }) as Address;
+              
+              if (owner.toLowerCase() === address.toLowerCase()) {
+                return BigInt(tokenIdStr);
+              }
+            } catch (err) {
+              // Token doesn't exist
+            }
+            return null;
+          });
+        
+        const checkResults = await Promise.all(checkPromises);
+        missingTokens.push(...checkResults.filter((id): id is bigint => id !== null));
+        
+        if (missingTokens.length > 0) {
+          ownedIds.push(...missingTokens);
+        }
       }
 
-      // Fetch metadata for all owned tokens with small delay to avoid rate limiting
-      const fetchedCards = await fetchCardsByIds(ownedIds);
+      // Only fetch metadata for new tokens if we have cached cards
+      let fetchedCards: Card[] = [];
+      if (!forceRefresh && existingTokenIds.size > 0) {
+        // Only fetch new cards
+        const newTokenIds = ownedIds.filter(id => !existingTokenIds.has(id.toString()));
+        if (newTokenIds.length > 0) {
+          const newCards = await fetchCardsByIds(newTokenIds);
+          fetchedCards = [...cards, ...newCards];
+        } else {
+          fetchedCards = cards; // No new cards
+        }
+      } else {
+        // Full fetch
+        fetchedCards = await fetchCardsByIds(ownedIds);
+      }
       
-      // Final verification: filter out any cards that don't actually belong to the user
-      // (in case of edge cases with event filtering)
-      const verifiedCards = fetchedCards.filter(card => card !== null);
-      
-      console.log(`[useUserCards] Successfully fetched ${verifiedCards.length} cards`);
-      setCards(verifiedCards);
+      console.log(`[useUserCards] Successfully fetched ${fetchedCards.length} cards`);
+      setCards(fetchedCards);
+      setLastScannedBlock(currentBlock);
+      if (address) saveToCache(address);
     } catch (err) {
       console.error('Error fetching user cards:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch cards'));
     } finally {
       setLoading(false);
     }
-  }, [address, publicClient, setCards, setLoading, setError, fetchCardsByIds]);
+  }, [address, publicClient, setCards, setLoading, setError, fetchCardsByIds, cards, lastScannedBlock, setLastScannedBlock, loadFromCache, saveToCache]);
 
-  // Initial fetch
+  // Initial fetch - load cached data immediately, then refresh in background
   useEffect(() => {
-    fetchUserCards();
-  }, [fetchUserCards]);
+    if (!address || !publicClient) return;
+
+    // Store address for cache operations
+    (window as any).__walletAddress = address;
+
+    // Load from cache first
+    const hadCache = loadFromCache(address);
+    
+    if (hadCache && cards.length > 0) {
+      // Show cached data immediately, refresh in background
+      console.log(`[useUserCards] Showing ${cards.length} cached cards, refreshing in background...`);
+      fetchUserCards(false);
+    } else {
+      // No cache, do full fetch
+      fetchUserCards(true);
+    }
+  }, [address, publicClient]); // Only depend on address and publicClient
 
   // Note: Event watching disabled to avoid RPC rate limits on free tier
   // Use refetch() to manually refresh the collection after opening packs
@@ -418,7 +450,7 @@ export function useUserCards(): UseUserCardsResult {
     cards,
     isLoading,
     error,
-    refetch: fetchUserCards,
+    refetch: () => fetchUserCards(true),
     fetchCardsByIds,
   };
 }
