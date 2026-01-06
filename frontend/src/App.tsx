@@ -4,6 +4,7 @@ import { Navigation } from './components/Navigation';
 import { PackStoreContainer } from './components/PackStoreContainer';
 import { PackOpeningContainer } from './components/PackOpeningContainer';
 import { Collection } from './components/Collection';
+import { Trades } from './components/Trades';
 import { useAccount } from 'wagmi';
 import { useAccountChange } from './hooks/useAccountChange';
 
@@ -28,13 +29,8 @@ function App() {
         return <PackOpeningContainer onViewCollection={handleViewCollection} onNavigateToStore={() => setActiveTab('store')} />;
       case 'collection':
         return <Collection onNavigateToStore={() => setActiveTab('store')} />;
-      case 'marketplace':
-        return (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <h2 style={{ color: '#fff', fontSize: '24px', marginBottom: '8px' }}>Marketplace</h2>
-            <p style={{ color: '#888' }}>Coming soon...</p>
-          </div>
-        );
+      case 'trades':
+        return <Trades />;
       default:
         return <PackStoreContainer />;
     }

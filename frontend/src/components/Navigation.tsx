@@ -8,7 +8,7 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
     { id: 'store', label: 'Pack Store' },
     { id: 'open', label: 'Open Packs' },
     { id: 'collection', label: 'My Collection' },
-    { id: 'marketplace', label: 'Marketplace' },
+    { id: 'trades', label: 'Trades' },
   ];
 
   return (

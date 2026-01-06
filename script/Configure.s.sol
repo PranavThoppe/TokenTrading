@@ -12,7 +12,7 @@ import "../src/PackManager.sol";
 contract Configure is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address packManagerAddress = vm.envAddress("VITE_PACK_MANAGER_ADDRESS");
+        address packManagerAddress = vm.envAddress("PACK_MANAGER_ADDRESS");
         
         PackManager packManager = PackManager(packManagerAddress);
         
