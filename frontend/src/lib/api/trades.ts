@@ -117,3 +117,234 @@ export async function isCardListed(tokenId: number): Promise<boolean> {
     throw error;
   }
 }
+
+/**
+ * Get user's active trades with participants (pending, accepted)
+ * @param userAddress - The user's wallet address
+ * @returns Promise - Array of trades with their participants
+ */
+export async function getUserTrades(userAddress: string): Promise<Array<{
+  trade: import('../supabase').Trade;
+  participants: any[];
+}>> {
+  try {
+    // First get the trades
+    const { data: trades, error: tradeError } = await supabase
+      .from('trades')
+      .select('*')
+      .or(`initiator_address.eq.${userAddress},counterparty_address.eq.${userAddress}`)
+      .in('status', ['pending', 'accepted'])
+      .order('created_at', { ascending: false });
+
+    if (tradeError) {
+      console.error('Error fetching user trades:', tradeError);
+      throw new Error(`Failed to fetch user trades: ${tradeError.message}`);
+    }
+
+    if (!trades || trades.length === 0) {
+      return [];
+    }
+
+    // Then get participants for all trades
+    const tradeIds = trades.map(t => t.id);
+    const { data: participants, error: participantsError } = await supabase
+      .from('trade_participants')
+      .select('*')
+      .in('trade_id', tradeIds);
+
+    if (participantsError) {
+      console.error('Error fetching trade participants:', participantsError);
+      throw new Error(`Failed to fetch trade participants: ${participantsError.message}`);
+    }
+
+    // Group participants by trade_id
+    const participantsByTrade = (participants || []).reduce((acc, participant) => {
+      if (!acc[participant.trade_id]) {
+        acc[participant.trade_id] = [];
+      }
+      acc[participant.trade_id].push(participant);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Combine trades with their participants
+    return trades.map(trade => ({
+      trade,
+      participants: participantsByTrade[trade.id] || []
+    }));
+  } catch (error) {
+    console.error('Error in getUserTrades:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get trade participants for a specific trade
+ * @param tradeId - The trade ID
+ * @returns Promise - Array of trade participants with card details
+ */
+export async function getTradeParticipants(tradeId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('trade_participants')
+      .select('*')
+      .eq('trade_id', tradeId);
+
+    if (error) {
+      console.error('Error fetching trade participants:', error);
+      throw new Error(`Failed to fetch trade participants: ${error.message}`);
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getTradeParticipants:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get card details by token ID
+ * @param tokenIds - Array of token IDs to fetch
+ * @returns Promise - Map of token_id to card details
+ */
+export async function getCardDetails(tokenIds: number[]): Promise<Map<number, any>> {
+  try {
+    if (tokenIds.length === 0) return new Map();
+
+    console.log('getCardDetails called with:', tokenIds, 'types:', tokenIds.map(id => typeof id));
+
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .in('token_id', tokenIds);
+
+    if (error) {
+      console.error('Error fetching card details:', error);
+      throw new Error(`Failed to fetch card details: ${error.message}`);
+    }
+
+    console.log('Raw data from DB:', data);
+
+    // Convert array to Map for easy lookup
+    const cardMap = new Map();
+    (data || []).forEach(card => {
+      console.log('Processing card from DB:', card.token_id, typeof card.token_id, card.rarity, typeof card.rarity);
+      const tokenIdNum = Number(card.token_id);
+      console.log('Setting map key:', tokenIdNum, typeof tokenIdNum);
+      cardMap.set(tokenIdNum, card);
+    });
+
+    console.log('Final cardMap:', cardMap);
+    return cardMap;
+  } catch (error) {
+    console.error('Error in getCardDetails:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new trade offer (UPDATED: Also saves card metadata)
+ * @param initiatorAddress - Address of the user making the offer
+ * @param counterpartyAddress - Address of the card owner
+ * @param offeredCards - Array of token IDs the initiator is offering
+ * @param requestedCard - The token ID being requested
+ * @param offeredCardDetails - Details of cards being offered (from user's collection)
+ * @param requestedCardDetails - Details of the requested card (from listed_cards)
+ * @returns Promise<Trade> - The created trade
+ */
+export async function createTradeOffer(
+  initiatorAddress: string,
+  counterpartyAddress: string,
+  offeredCards: number[],
+  requestedCard: number,
+  offeredCardDetails: Array<{tokenId: number, playerName: string, position?: string, rarity: number}>,
+  requestedCardDetails: {playerName: string, position?: string, rarity: number}
+): Promise<import('../supabase').Trade> {
+  try {
+    // First, ensure all card data exists in cards table
+    const allCardDetails = [
+      ...offeredCardDetails.map(card => {
+        console.log('Saving offered card to DB:', card.tokenId, 'rarity:', card.rarity);
+        return {
+          token_id: card.tokenId,
+          owner_address: initiatorAddress, // Current owner
+          player_name: card.playerName,
+          position: card.position,
+          rarity: card.rarity
+        };
+      }),
+      {
+        token_id: requestedCard,
+        owner_address: counterpartyAddress, // Current owner
+        player_name: requestedCardDetails.playerName,
+        position: requestedCardDetails.position,
+        rarity: requestedCardDetails.rarity
+      }
+    ];
+
+    console.log('All card details to save:', allCardDetails);
+
+    // Upsert card data (update if exists, insert if not)
+    const { error: cardsError } = await supabase
+      .from('cards')
+      .upsert(allCardDetails, {
+        onConflict: 'token_id',
+        ignoreDuplicates: false
+      });
+
+    if (cardsError) {
+      console.error('Error upserting card data:', cardsError);
+      throw new Error(`Failed to save card data: ${cardsError.message}`);
+    }
+
+    // Then create the trade record
+    const { data: tradeData, error: tradeError } = await supabase
+      .from('trades')
+      .insert([{
+        trade_id: Date.now(), // Simple trade ID generation
+        status: 'pending',
+        initiator_address: initiatorAddress,
+        counterparty_address: counterpartyAddress,
+      }])
+      .select()
+      .single();
+
+    if (tradeError) {
+      console.error('Error creating trade:', tradeError);
+      throw new Error(`Failed to create trade: ${tradeError.message}`);
+    }
+
+    // Add trade participants
+    const participants = [
+      // Cards offered by initiator
+      ...offeredCards.map(tokenId => ({
+        trade_id: tradeData.id,
+        token_id: tokenId,
+        participant_address: initiatorAddress,
+        offered: true,
+      })),
+      // Card requested from counterparty
+      {
+        trade_id: tradeData.id,
+        token_id: requestedCard,
+        participant_address: counterpartyAddress,
+        offered: false,
+      }
+    ];
+
+    const { error: participantsError } = await supabase
+      .from('trade_participants')
+      .insert(participants);
+
+    if (participantsError) {
+      console.error('Error adding trade participants:', participantsError);
+      // Try to clean up the trade record if participants failed
+      await supabase.from('trades').delete().eq('id', tradeData.id);
+      throw new Error(`Failed to add trade participants: ${participantsError.message}`);
+    }
+
+    return tradeData;
+  } catch (error) {
+    console.error('Error in createTradeOffer:', error);
+    throw error;
+  }
+}

@@ -1,18 +1,10 @@
 import { useState, useEffect } from 'react';
-import { getListedCards } from '../lib/api/trades';
-import type { ListedCard } from '../lib/supabase';
+import { useAccount } from 'wagmi';
+import { getListedCards, getUserTrades, getCardDetails } from '../lib/api/trades';
+import { TradeCreationModal } from './TradeCreationModal';
+import type { ListedCard, Trade } from '../lib/supabase';
 
-// Mock data types for active trades - will be replaced with Supabase data later
-interface ActiveTrade {
-  id: string;
-  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
-  initiatedBy: string;
-  otherParty: string;
-  yourCards: number[];
-  theirCards: number[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+// Remove mock interface - using real Trade type from Supabase
 
 // Card display interface (what renderCard expects)
 interface CardDisplay {
@@ -24,16 +16,6 @@ interface CardDisplay {
   imageUrl?: string;
 }
 
-interface ActiveTrade {
-  id: string;
-  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
-  initiatedBy: string;
-  otherParty: string;
-  yourCards: number[];
-  theirCards: number[];
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 const rarityColors: Record<number, { bg: string; border: string; glow: string; name: string }> = {
   0: { bg: '#374151', border: '#6b7280', glow: 'rgba(107, 114, 128, 0.3)', name: 'Common' },
@@ -43,46 +25,84 @@ const rarityColors: Record<number, { bg: string; border: string; glow: string; n
   4: { bg: '#854d0e', border: '#eab308', glow: 'rgba(234, 179, 8, 0.4)', name: 'Legendary' },
 };
 
-// Mock data for active trades - will be replaced with real Supabase queries later
-const mockActiveTrades: ActiveTrade[] = [
-  {
-    id: 'trade-1',
-    status: 'pending',
-    initiatedBy: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-    otherParty: '0x987d35Cc6634C0532925a3b844Bc454e4438f44e',
-    yourCards: [15, 22],
-    theirCards: [8, 19],
-    createdAt: new Date('2025-01-04T12:00:00Z'),
-    updatedAt: new Date('2025-01-04T12:00:00Z'),
-  },
-];
+// Remove mock data - using real data from Supabase
 
 export function Trades() {
+  const { address } = useAccount();
   const [activeSection, setActiveSection] = useState<'listed' | 'trades'>('listed');
   const [listedCards, setListedCards] = useState<ListedCard[]>([]);
+  const [userTrades, setUserTrades] = useState<Array<{
+    trade: Trade;
+    participants: any[];
+  }>>([]);
+  const [cardDetails, setCardDetails] = useState<Map<number, any>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showTradeModal, setShowTradeModal] = useState(false);
+  const [selectedListedCard, setSelectedListedCard] = useState<ListedCard | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch listed cards
+      const cards = await getListedCards();
+      setListedCards(cards);
+
+      // Fetch user trades if address is available
+      if (address) {
+        const trades = await getUserTrades(address);
+        setUserTrades(trades);
+
+        // Extract all unique token IDs from trade participants
+        const tokenIds = new Set<number>();
+        trades.forEach(({ participants }) => {
+          participants.forEach((participant: any) => {
+            console.log('Trade participant:', participant.token_id, typeof participant.token_id);
+            tokenIds.add(Number(participant.token_id));
+          });
+        });
+
+        console.log('All token IDs to fetch:', Array.from(tokenIds));
+
+        // Fetch card details for all cards involved in trades
+        if (tokenIds.size > 0) {
+          console.log('Fetching card details for tokens:', Array.from(tokenIds));
+          const cardDetailsMap = await getCardDetails(Array.from(tokenIds));
+          console.log('Fetched card details:', cardDetailsMap);
+          console.log('Card details keys:', Array.from(cardDetailsMap.keys()));
+          setCardDetails(cardDetailsMap);
+        }
+      } else {
+        setUserTrades([]);
+        setCardDetails(new Map());
+      }
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchListedCards() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const cards = await getListedCards();
-        setListedCards(cards);
-      } catch (err) {
-        console.error('Failed to fetch listed cards:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch listed cards');
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    fetchData();
+  }, [address]);
 
-    fetchListedCards();
-  }, []);
+  const handleMakeOffer = (listedCard: ListedCard) => {
+    setSelectedListedCard(listedCard);
+    setShowTradeModal(true);
+  };
+
+  const handleTradeSuccess = () => {
+    // Refresh both listed cards and user trades
+    fetchData();
+  };
 
   const renderCard = (card: CardDisplay) => {
-    const rarity = rarityColors[card.rarity] || rarityColors[0];
+    const rarityIndex = typeof card.rarity === 'string' ? parseInt(card.rarity) : card.rarity;
+    const rarity = rarityColors[rarityIndex] || rarityColors[0];
 
     return (
       <div
@@ -335,6 +355,7 @@ export function Trades() {
                   {new Date(card.listed_at).toLocaleDateString()}
                 </div>
                 <button
+                  onClick={() => handleMakeOffer(card)}
                   style={{
                     width: '100%',
                     marginTop: '8px',
@@ -377,7 +398,7 @@ export function Trades() {
       </div>
 
       {/* Empty State */}
-      {mockActiveTrades.length === 0 && (
+      {userTrades.length === 0 && (
         <div
           style={{
             textAlign: 'center',
@@ -396,88 +417,171 @@ export function Trades() {
       )}
 
       {/* Trades List */}
-      {mockActiveTrades.length > 0 && (
+      {userTrades.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {mockActiveTrades.map((trade) => (
-            <div
-              key={trade.id}
-              style={{
-                background: '#1a1a2e',
-                borderRadius: '12px',
-                border: '1px solid #333',
-                padding: '20px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div>
-                  <h3 style={{ color: '#fff', margin: '0 0 4px 0' }}>
-                    Trade with {trade.otherParty.slice(0, 6)}...{trade.otherParty.slice(-4)}
-                  </h3>
-                  <div style={{ fontSize: '12px', color: '#888' }}>
-                    Status: <span style={{
-                      color: trade.status === 'pending' ? '#eab308' :
-                             trade.status === 'accepted' ? '#22c55e' :
-                             trade.status === 'completed' ? '#3b82f6' : '#ef4444'
-                    }}>
-                      {trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: '#666' }}>
-                    Created: {trade.createdAt.toLocaleDateString()}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#666' }}>
-                    Updated: {trade.updatedAt.toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
+          {userTrades.map(({ trade, participants }) => {
+            // Determine if current user is the initiator or counterparty
+            const isInitiator = address === trade.initiator_address;
+            const otherParty = isInitiator ? trade.counterparty_address : trade.initiator_address;
 
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ color: '#fff', fontSize: '14px', margin: '0 0 8px 0' }}>You Offer:</h4>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {trade.yourCards.map((tokenId) => (
-                      <div key={tokenId} style={{ width: '60px' }}>
-                        {renderCard({
-                          tokenId,
-                          playerName: `Card ${tokenId}`,
-                          position: 'POS',
-                          team: 'TEAM',
-                          rarity: Math.floor(Math.random() * 5),
-                        })}
-                      </div>
-                    ))}
+            // Separate offered vs requested cards
+            const offeredCards = participants.filter(p => p.offered && p.participant_address === address);
+            const requestedCards = participants.filter(p => !p.offered && p.participant_address !== address);
+
+            return (
+              <div
+                key={trade.id}
+                style={{
+                  background: '#1a1a2e',
+                  borderRadius: '12px',
+                  border: '1px solid #333',
+                  padding: '20px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ color: '#fff', margin: '0 0 4px 0' }}>
+                      Trade with {otherParty.slice(0, 6)}...{otherParty.slice(-4)}
+                    </h3>
+                    <div style={{ fontSize: '12px', color: '#888' }}>
+                      Status: <span style={{
+                        color: trade.status === 'pending' ? '#eab308' :
+                               trade.status === 'accepted' ? '#22c55e' :
+                               trade.status === 'completed' ? '#3b82f6' : '#ef4444'
+                      }}>
+                        {trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: '#666' }}>
+                      Created: {new Date(trade.created_at).toLocaleDateString()}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#666' }}>
+                      Updated: {new Date(trade.updated_at).toLocaleDateString()}
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ fontSize: '24px', color: '#666' }}>↔️</div>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ color: '#fff', fontSize: '14px', margin: '0 0 8px 0' }}>
+                      You Offer ({offeredCards.length}):
+                    </h4>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {offeredCards.length > 0 ? offeredCards.map((participant) => {
+                        console.log('Participant token_id:', participant.token_id, typeof participant.token_id);
+                        console.log('Available card keys:', Array.from(cardDetails.keys()));
+                        const cardData = cardDetails.get(Number(participant.token_id));
+                        console.log('Offered card:', participant.token_id, 'cardData:', cardData);
+                        return (
+                          <div key={participant.id} style={{ width: '60px' }}>
+                            {renderCard({
+                              tokenId: participant.token_id,
+                              playerName: cardData?.player_name || `Card ${participant.token_id}`,
+                              position: cardData?.position || 'POS',
+                              team: '', // Not in cards table yet
+                              rarity: cardData?.rarity ?? 2,
+                            })}
+                          </div>
+                        );
+                      }) : (
+                        <div style={{
+                          width: '60px',
+                          height: '90px',
+                          background: '#374151',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#9ca3af',
+                          fontSize: '12px',
+                          textAlign: 'center'
+                        }}>
+                          None
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ color: '#fff', fontSize: '14px', margin: '0 0 8px 0' }}>They Offer:</h4>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {trade.theirCards.map((tokenId) => (
-                      <div key={tokenId} style={{ width: '60px' }}>
-                        {renderCard({
-                          tokenId,
-                          playerName: `Card ${tokenId}`,
-                          position: 'POS',
-                          team: 'TEAM',
-                          rarity: Math.floor(Math.random() * 5),
-                        })}
-                      </div>
-                    ))}
+                  <div style={{ fontSize: '24px', color: '#666' }}>↔️</div>
+
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ color: '#fff', fontSize: '14px', margin: '0 0 8px 0' }}>
+                      They Offer ({requestedCards.length}):
+                    </h4>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {requestedCards.length > 0 ? requestedCards.map((participant) => {
+                        const cardData = cardDetails.get(Number(participant.token_id));
+                        return (
+                          <div key={participant.id} style={{ width: '60px' }}>
+                            {renderCard({
+                              tokenId: participant.token_id,
+                              playerName: cardData?.player_name || `Card ${participant.token_id}`,
+                              position: cardData?.position || 'POS',
+                              team: '', // Not in cards table yet
+                              rarity: cardData?.rarity ?? 2,
+                            })}
+                          </div>
+                        );
+                      }) : (
+                        <div style={{
+                          width: '60px',
+                          height: '90px',
+                          background: '#374151',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#9ca3af',
+                          fontSize: '12px',
+                          textAlign: 'center'
+                        }}>
+                          None
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
-                {trade.status === 'pending' && (
-                  <>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
+                  {trade.status === 'pending' && (
+                    <>
+                      <button
+                        style={{
+                          padding: '8px 16px',
+                          background: '#dc2626',
+                          border: 'none',
+                          borderRadius: '6px',
+                          color: '#fff',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel Trade
+                      </button>
+                      {!isInitiator && (
+                        <button
+                          style={{
+                            padding: '8px 16px',
+                            background: '#7c3aed',
+                            border: 'none',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Accept Trade
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {trade.status === 'accepted' && (
                     <button
                       style={{
                         padding: '8px 16px',
-                        background: '#dc2626',
+                        background: '#22c55e',
                         border: 'none',
                         borderRadius: '6px',
                         color: '#fff',
@@ -485,41 +589,13 @@ export function Trades() {
                         cursor: 'pointer',
                       }}
                     >
-                      Cancel Trade
+                      Execute Trade
                     </button>
-                    <button
-                      style={{
-                        padding: '8px 16px',
-                        background: '#7c3aed',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: '#fff',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Accept Trade
-                    </button>
-                  </>
-                )}
-                {trade.status === 'accepted' && (
-                  <button
-                    style={{
-                      padding: '8px 16px',
-                      background: '#22c55e',
-                      border: 'none',
-                      borderRadius: '6px',
-                      color: '#fff',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Execute Trade
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -573,13 +649,21 @@ export function Trades() {
               transition: 'color 0.2s',
             }}
           >
-            My Trades ({mockActiveTrades.length})
+            My Trades ({userTrades.length})
           </button>
         </div>
       </div>
 
       {/* Content */}
       {activeSection === 'listed' ? renderListedCards() : renderActiveTrades()}
+
+      {/* Trade Creation Modal */}
+      <TradeCreationModal
+        isOpen={showTradeModal}
+        onClose={() => setShowTradeModal(false)}
+        listedCard={selectedListedCard}
+        onSuccess={handleTradeSuccess}
+      />
     </div>
   );
 }
