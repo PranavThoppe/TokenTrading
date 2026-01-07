@@ -1,17 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getListedCards } from '../lib/api/trades';
+import type { ListedCard } from '../lib/supabase';
 
-// Mock data types - will be replaced with Supabase data later
-interface ListedCard {
+// Mock data types for active trades - will be replaced with Supabase data later
+interface ActiveTrade {
   id: string;
+  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  initiatedBy: string;
+  otherParty: string;
+  yourCards: number[];
+  theirCards: number[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Card display interface (what renderCard expects)
+interface CardDisplay {
   tokenId: number;
   playerName: string;
   position: string;
   team: string;
   rarity: number;
   imageUrl?: string;
-  listedBy: string;
-  listedAt: Date;
-  requestedCards?: number[]; // Cards the lister wants in return
 }
 
 interface ActiveTrade {
@@ -33,31 +43,7 @@ const rarityColors: Record<number, { bg: string; border: string; glow: string; n
   4: { bg: '#854d0e', border: '#eab308', glow: 'rgba(234, 179, 8, 0.4)', name: 'Legendary' },
 };
 
-// Mock data - will be replaced with real Supabase queries
-const mockListedCards: ListedCard[] = [
-  {
-    id: '1',
-    tokenId: 1,
-    playerName: 'Patrick Mahomes',
-    position: 'QB',
-    team: 'Chiefs',
-    rarity: 4,
-    listedBy: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-    listedAt: new Date('2025-01-05T10:00:00Z'),
-    requestedCards: [5, 12],
-  },
-  {
-    id: '2',
-    tokenId: 23,
-    playerName: 'Josh Allen',
-    position: 'QB',
-    team: 'Bills',
-    rarity: 3,
-    listedBy: '0x123d35Cc6634C0532925a3b844Bc454e4438f44e',
-    listedAt: new Date('2025-01-04T15:30:00Z'),
-  },
-];
-
+// Mock data for active trades - will be replaced with real Supabase queries later
 const mockActiveTrades: ActiveTrade[] = [
   {
     id: 'trade-1',
@@ -73,8 +59,29 @@ const mockActiveTrades: ActiveTrade[] = [
 
 export function Trades() {
   const [activeSection, setActiveSection] = useState<'listed' | 'trades'>('listed');
+  const [listedCards, setListedCards] = useState<ListedCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const renderCard = (card: ListedCard | { tokenId: number; playerName: string; position: string; team: string; rarity: number; imageUrl?: string }) => {
+  useEffect(() => {
+    async function fetchListedCards() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const cards = await getListedCards();
+        setListedCards(cards);
+      } catch (err) {
+        console.error('Failed to fetch listed cards:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch listed cards');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchListedCards();
+  }, []);
+
+  const renderCard = (card: CardDisplay) => {
     const rarity = rarityColors[card.rarity] || rarityColors[0];
 
     return (
@@ -235,8 +242,47 @@ export function Trades() {
         </button>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+          <p style={{ color: '#888' }}>Loading listed cards...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            background: '#1a1a2e',
+            borderRadius: '12px',
+            border: '1px solid #dc2626',
+          }}
+        >
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+          <h2 style={{ color: '#f87171', fontSize: '20px', marginBottom: '8px' }}>Connection Error</h2>
+          <p style={{ color: '#888', marginBottom: '16px' }}>{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '8px 16px',
+              background: '#7c3aed',
+              border: 'none',
+              borderRadius: '6px',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Empty State */}
-      {mockListedCards.length === 0 && (
+      {!isLoading && !error && listedCards.length === 0 && (
         <div
           style={{
             textAlign: 'center',
@@ -255,7 +301,7 @@ export function Trades() {
       )}
 
       {/* Cards Grid */}
-      {mockListedCards.length > 0 && (
+      {!isLoading && !error && listedCards.length > 0 && (
         <div
           style={{
             display: 'grid',
@@ -263,9 +309,16 @@ export function Trades() {
             gap: '16px',
           }}
         >
-          {mockListedCards.map((card) => (
+          {listedCards.map((card) => (
             <div key={card.id}>
-              {renderCard(card)}
+              {renderCard({
+                tokenId: card.token_id,
+                playerName: card.player_name,
+                position: card.position || '',
+                team: '', // Not in our schema yet
+                rarity: card.rarity,
+                imageUrl: undefined, // Not in our schema yet
+              })}
               <div
                 style={{
                   marginTop: '8px',
@@ -276,16 +329,11 @@ export function Trades() {
                 }}
               >
                 <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
-                  Listed by: {card.listedBy.slice(0, 6)}...{card.listedBy.slice(-4)}
+                  Listed by: {card.owner_address.slice(0, 6)}...{card.owner_address.slice(-4)}
                 </div>
                 <div style={{ fontSize: '11px', color: '#666' }}>
-                  {card.listedAt.toLocaleDateString()}
+                  {new Date(card.listed_at).toLocaleDateString()}
                 </div>
-                {card.requestedCards && card.requestedCards.length > 0 && (
-                  <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>
-                    Wants: {card.requestedCards.length} card{card.requestedCards.length !== 1 ? 's' : ''}
-                  </div>
-                )}
                 <button
                   style={{
                     width: '100%',
@@ -509,7 +557,7 @@ export function Trades() {
               transition: 'color 0.2s',
             }}
           >
-            Listed Cards ({mockListedCards.length})
+            Listed Cards ({listedCards.length})
           </button>
           <button
             onClick={() => setActiveSection('trades')}

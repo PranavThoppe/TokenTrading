@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useUserCards } from '@/hooks/useUserCards';
 import { useCollectionStore } from '@/store/collectionStore';
+import { CardListingModal } from './CardListingModal';
 
 const rarityColors: Record<number, { bg: string; border: string; glow: string; name: string }> = {
   0: { bg: '#374151', border: '#6b7280', glow: 'rgba(107, 114, 128, 0.3)', name: 'Common' },
@@ -16,10 +18,33 @@ interface CollectionProps {
 export function Collection({ onNavigateToStore }: CollectionProps) {
   const { cards, isLoading, error, refetch } = useUserCards();
   const { newCardIds, clearNewCards } = useCollectionStore();
+  const [selectedCard, setSelectedCard] = useState<{
+    tokenId: number;
+    playerName: string;
+    position?: string;
+    rarity: number;
+  } | null>(null);
+  const [showListingModal, setShowListingModal] = useState(false);
 
   // Clear new card highlights after viewing
   const handleClearNew = () => {
     clearNewCards();
+  };
+
+  // Handle card click to show listing options
+  const handleCardClick = (card: any) => {
+    setSelectedCard({
+      tokenId: card.tokenId,
+      playerName: card.playerName,
+      position: card.position,
+      rarity: card.rarity,
+    });
+    setShowListingModal(true);
+  };
+
+  // Handle successful listing/unlisting
+  const handleListingSuccess = () => {
+    refetch(); // Refresh the collection
   };
 
   if (isLoading) {
@@ -172,6 +197,7 @@ export function Collection({ onNavigateToStore }: CollectionProps) {
                   aspectRatio: '2/3', // 1024x1536 = 2:3 aspect ratio
                   width: '100%',
                 }}
+                onClick={() => handleCardClick(card)}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
                   e.currentTarget.style.boxShadow = `0 8px 24px ${rarity.glow}`;
@@ -304,6 +330,14 @@ export function Collection({ onNavigateToStore }: CollectionProps) {
           })}
         </div>
       )}
+
+      {/* Card Listing Modal */}
+      <CardListingModal
+        isOpen={showListingModal}
+        onClose={() => setShowListingModal(false)}
+        card={selectedCard}
+        onSuccess={handleListingSuccess}
+      />
     </div>
   );
 }
