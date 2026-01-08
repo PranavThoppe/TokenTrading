@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { getListedCards, getUserTrades, getCardDetails } from '../lib/api/trades';
+import { getListedCards, getUserTrades } from '../lib/api/trades';
 import { TradeCreationModal } from './TradeCreationModal';
 import type { ListedCard, Trade } from '../lib/supabase';
 
@@ -33,9 +33,8 @@ export function Trades() {
   const [listedCards, setListedCards] = useState<ListedCard[]>([]);
   const [userTrades, setUserTrades] = useState<Array<{
     trade: Trade;
-    participants: any[];
+    cards: any[];
   }>>([]);
-  const [cardDetails, setCardDetails] = useState<Map<number, any>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTradeModal, setShowTradeModal] = useState(false);
@@ -55,28 +54,9 @@ export function Trades() {
         const trades = await getUserTrades(address);
         setUserTrades(trades);
 
-        // Extract all unique token IDs from trade participants
-        const tokenIds = new Set<number>();
-        trades.forEach(({ participants }) => {
-          participants.forEach((participant: any) => {
-            console.log('Trade participant:', participant.token_id, typeof participant.token_id);
-            tokenIds.add(Number(participant.token_id));
-          });
-        });
-
-        console.log('All token IDs to fetch:', Array.from(tokenIds));
-
-        // Fetch card details for all cards involved in trades
-        if (tokenIds.size > 0) {
-          console.log('Fetching card details for tokens:', Array.from(tokenIds));
-          const cardDetailsMap = await getCardDetails(Array.from(tokenIds));
-          console.log('Fetched card details:', cardDetailsMap);
-          console.log('Card details keys:', Array.from(cardDetailsMap.keys()));
-          setCardDetails(cardDetailsMap);
-        }
+        // Card details are already included in the trade response
       } else {
         setUserTrades([]);
-        setCardDetails(new Map());
       }
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -419,14 +399,14 @@ export function Trades() {
       {/* Trades List */}
       {userTrades.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {userTrades.map(({ trade, participants }) => {
+          {userTrades.map(({ trade, cards }) => {
             // Determine if current user is the initiator or counterparty
             const isInitiator = address === trade.initiator_address;
             const otherParty = isInitiator ? trade.counterparty_address : trade.initiator_address;
 
-            // Separate offered vs requested cards
-            const offeredCards = participants.filter(p => p.offered && p.participant_address === address);
-            const requestedCards = participants.filter(p => !p.offered && p.participant_address !== address);
+            // Separate cards by ownership
+            const yourCards = cards.filter(card => card.owner_address === address);
+            const theirCards = cards.filter(card => card.owner_address !== address);
 
             return (
               <div
@@ -466,22 +446,19 @@ export function Trades() {
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                   <div style={{ flex: 1 }}>
                     <h4 style={{ color: '#fff', fontSize: '14px', margin: '0 0 8px 0' }}>
-                      You Offer ({offeredCards.length}):
+                      Your Cards ({yourCards.length}):
                     </h4>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {offeredCards.length > 0 ? offeredCards.map((participant) => {
-                        console.log('Participant token_id:', participant.token_id, typeof participant.token_id);
-                        console.log('Available card keys:', Array.from(cardDetails.keys()));
-                        const cardData = cardDetails.get(Number(participant.token_id));
-                        console.log('Offered card:', participant.token_id, 'cardData:', cardData);
+                      {yourCards.length > 0 ? yourCards.map((card) => {
+                        console.log('Your card:', card.token_id, 'cardData:', card);
                         return (
-                          <div key={participant.id} style={{ width: '60px' }}>
+                          <div key={card.token_id} style={{ width: '60px' }}>
                             {renderCard({
-                              tokenId: participant.token_id,
-                              playerName: cardData?.player_name || `Card ${participant.token_id}`,
-                              position: cardData?.position || 'POS',
-                              team: '', // Not in cards table yet
-                              rarity: cardData?.rarity ?? 2,
+                              tokenId: card.token_id,
+                              playerName: card.player_name || `Card ${card.token_id}`,
+                              position: card.position || 'POS',
+                              team: card.team || '', // Not in cards table yet
+                              rarity: card.rarity ?? 2,
                             })}
                           </div>
                         );
@@ -508,19 +485,19 @@ export function Trades() {
 
                   <div style={{ flex: 1 }}>
                     <h4 style={{ color: '#fff', fontSize: '14px', margin: '0 0 8px 0' }}>
-                      They Offer ({requestedCards.length}):
+                      Their Cards ({theirCards.length}):
                     </h4>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {requestedCards.length > 0 ? requestedCards.map((participant) => {
-                        const cardData = cardDetails.get(Number(participant.token_id));
+                      {theirCards.length > 0 ? theirCards.map((card) => {
+                        console.log('Their card:', card.token_id, 'cardData:', card);
                         return (
-                          <div key={participant.id} style={{ width: '60px' }}>
+                          <div key={card.token_id} style={{ width: '60px' }}>
                             {renderCard({
-                              tokenId: participant.token_id,
-                              playerName: cardData?.player_name || `Card ${participant.token_id}`,
-                              position: cardData?.position || 'POS',
-                              team: '', // Not in cards table yet
-                              rarity: cardData?.rarity ?? 2,
+                              tokenId: card.token_id,
+                              playerName: card.player_name || `Card ${card.token_id}`,
+                              position: card.position || 'POS',
+                              team: card.team || '', // Not in cards table yet
+                              rarity: card.rarity ?? 2,
                             })}
                           </div>
                         );
